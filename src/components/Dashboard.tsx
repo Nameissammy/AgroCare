@@ -1,0 +1,175 @@
+import React from 'react';
+import { 
+  CloudRain, 
+  Lightbulb, 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  Camera, 
+  Calendar, 
+  TrendingUp, 
+  Wallet, 
+  CheckCircle2,
+  ChevronRight,
+  Search
+} from 'lucide-react';
+import { motion } from 'motion/react';
+
+export default function Dashboard() {
+  return (
+    <div className="p-4 md:p-8 space-y-8 overflow-y-auto">
+      {/* Hero Section */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="lg:col-span-2 relative overflow-hidden rounded-2xl bg-emerald-600 p-8 text-white flex flex-col justify-between min-h-[220px]"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+          <div className="z-10">
+            <h2 className="text-4xl font-black mb-2">28°C Sunny</h2>
+            <p className="text-white/80 font-medium">Perfect weather for wheat harvesting in your region today.</p>
+          </div>
+          <div className="z-10 mt-6 flex items-center gap-4">
+            <button className="bg-white text-emerald-700 px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors">
+              View 7-Day Forecast
+            </button>
+            <div className="flex items-center gap-2 text-sm text-white/90">
+              <CloudRain size={18} />
+              <span>Humidity: 45%</span>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100 flex flex-col justify-center"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <Lightbulb className="text-emerald-600" size={20} />
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Daily Farmer Tip</span>
+          </div>
+          <p className="text-slate-700 font-medium leading-relaxed">
+            Rotate your wheat crops with legumes to naturally enrich soil nitrogen levels and reduce the need for fertilizers next season.
+          </p>
+        </motion.div>
+      </section>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Live Mandi Prices */}
+        <div className="bg-white rounded-2xl p-6 border border-emerald-50 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-bold text-lg">Live Mandi Prices</h3>
+            <button className="text-emerald-600 text-sm font-semibold hover:underline flex items-center gap-1">
+              View All <ChevronRight size={14} />
+            </button>
+          </div>
+          <div className="space-y-4">
+            {[
+              { name: 'Wheat', price: '₹2,125', trend: '+2.4%', up: true, icon: '🌾', color: 'bg-orange-50 text-orange-600' },
+              { name: 'Rice', price: '₹1,950', trend: '-0.8%', up: false, icon: '🍚', color: 'bg-yellow-50 text-yellow-600' },
+              { name: 'Tomato', price: '₹3,400', trend: '+5.2%', up: true, icon: '🍅', color: 'bg-red-50 text-red-600' },
+            ].map((crop, i) => (
+              <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className={`size-10 ${crop.color} rounded-lg flex items-center justify-center text-xl`}>
+                    {crop.icon}
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm">{crop.name}</p>
+                    <p className="text-xs text-slate-500">Per Quintal</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-sm">{crop.price}</p>
+                  <p className={`text-xs flex items-center justify-end font-medium ${crop.up ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {crop.up ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />} {crop.trend}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Disease Detection CTA */}
+        <div className="bg-white rounded-2xl p-6 border border-emerald-50 shadow-sm flex flex-col">
+          <div className="flex items-center gap-3 mb-4">
+            <Search className="text-emerald-600" size={20} />
+            <h3 className="font-bold text-lg">Crop Health AI</h3>
+          </div>
+          <div className="flex-1 bg-emerald-50/50 rounded-xl border-2 border-dashed border-emerald-200 flex flex-col items-center justify-center p-6 text-center">
+            <div className="size-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 text-emerald-600">
+              <Camera size={32} />
+            </div>
+            <p className="text-sm font-bold mb-1">Spot something unusual?</p>
+            <p className="text-xs text-slate-500 mb-4">Upload a photo of your crop to diagnose pests and diseases instantly.</p>
+            <button className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-emerald-700 transition-colors">
+              Diagnose Your Crop Now
+            </button>
+          </div>
+        </div>
+
+        {/* Knowledge Hub */}
+        <div className="bg-white rounded-2xl p-6 border border-emerald-50 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="font-bold text-lg">Knowledge Hub</h3>
+            <button className="text-emerald-600 text-sm font-semibold hover:underline">Read All</button>
+          </div>
+          <div className="space-y-4">
+            {[
+              { 
+                title: 'Organic Pest Control: 5 Natural Methods for 2024', 
+                meta: '4 min read • Agriculture',
+                img: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=100&h=100&fit=crop'
+              },
+              { 
+                title: 'Smart Irrigation Systems: Reducing Water Waste', 
+                meta: '6 min read • Tech',
+                img: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=100&h=100&fit=crop'
+              },
+              { 
+                title: 'Understanding Soil pH: A Guide for Wheat Farmers', 
+                meta: '8 min read • Soil Science',
+                img: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=100&h=100&fit=crop'
+              },
+            ].map((article, i) => (
+              <div key={i} className="flex gap-4 group cursor-pointer">
+                <div className="size-16 rounded-lg overflow-hidden shrink-0">
+                  <img src={article.img} alt={article.title} className="w-full h-full object-cover" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-bold leading-snug group-hover:text-emerald-600 transition-colors line-clamp-2">
+                    {article.title}
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1">{article.meta}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Summary Stats */}
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Season Progress', value: 'Day 42/90', icon: Calendar, color: 'bg-blue-50 text-blue-600' },
+          { label: 'Yield Prediction', value: '+12% vs LY', icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
+          { label: 'Estimated Income', value: '₹4.2 Lakhs', icon: Wallet, color: 'bg-orange-50 text-orange-600' },
+          { label: 'Government Subsidy', value: 'Active', icon: CheckCircle2, color: 'bg-purple-50 text-purple-600' },
+        ].map((stat, i) => (
+          <div key={i} className="bg-white p-4 rounded-xl border border-emerald-50 flex items-center gap-4">
+            <div className={`p-2 rounded-lg ${stat.color}`}>
+              <stat.icon size={20} />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500">{stat.label}</p>
+              <p className="font-bold">{stat.value}</p>
+            </div>
+          </div>
+        ))}
+      </section>
+    </div>
+  );
+}

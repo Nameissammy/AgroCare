@@ -1,0 +1,7 @@
+{
+  "name": "AgroCare",
+  "description": "A comprehensive farmer's portal for dashboard insights, mandi prices, disease detection, and agricultural education.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
