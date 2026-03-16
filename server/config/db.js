@@ -6,7 +6,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load .env first (primary), then .env.local for optional overrides. dotenv does not overwrite existing vars by default.
+// Load .env first (primary), then .env.local for optional, machine-specific overrides.
+// Keep secrets in `.env`; use `.env.local` only for personal overrides that should not be committed.
 dotenv.config({ path: resolve(__dirname, '../.env') });
 dotenv.config({ path: resolve(__dirname, '../.env.local') });
 
@@ -16,7 +17,7 @@ const connectDB = async () => {
   const uri = raw && raw.trim() ? raw.trim() : defaultLocal;
 
   if (raw && !raw.trim()) {
-    console.warn('MONGODB_URI/MONGO_URI is set but empty. Falling back to default localhost URI. Please check server/.env.local.');
+    console.warn('MONGODB_URI/MONGO_URI is set but empty. Falling back to default localhost URI. Please check server/.env.');
   }
 
   const serverSelectionTimeoutMS = 5000;
@@ -53,7 +54,7 @@ const connectDB = async () => {
   console.error('Common fixes:');
   console.error('- Ensure mongod is running locally: `brew services start mongodb-community@6.0` or run `mongod --dbpath server/mongo-data`');
   console.error('- If using Atlas, verify MONGODB_URI/MONGO_URI, whitelist your IP and URL-encode any special characters in the password.');
-  console.error('- Make sure server/.env.local contains only KEY=VALUE lines (no JS).');
+  console.error('- Make sure server/.env contains only KEY=VALUE lines (no JS).');
   // do not exit immediately; throw so caller can decide (keeps nodemon alive if desired)
   throw lastErr;
 };

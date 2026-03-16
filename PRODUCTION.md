@@ -54,7 +54,7 @@ define: {
 
 ### Why It's Fine for Local Development
 
-- The key only exists in `.env.local` (gitignored) and in the in-memory dev server bundle.
+- The key only exists in `.env` (gitignored) and in the in-memory dev server bundle.
 - No one else has access to your local machine's network.
 
 ### Why It's a Problem in Production
@@ -116,7 +116,7 @@ This avoids maintaining a full backend server while keeping the key server-side.
 
 | Variable         | Location     | Behavior                                 |
 | ---------------- | ------------ | ---------------------------------------- |
-| `GEMINI_API_KEY` | `.env.local` | Injected at build time via Vite `define` |
+| `GEMINI_API_KEY` | `.env`       | Injected at build time via Vite `define` |
 
 ### Production (Recommended)
 

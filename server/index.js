@@ -8,7 +8,7 @@ import authRoutes from './routes/auth.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// load env from server/.env.local if present
+// load env from server/.env if present
 // (connectDB also loads it, but keep this for any immediate env reads)
 try {
   // Load primary .env then optional .env.local for overrides

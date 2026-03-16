@@ -34,7 +34,7 @@ agrocare/
 ├── CLAUDE.md              ← This file (project reference)
 ├── PRODUCTION.md          ← Production deployment guide, security caveats, recommendations
 ├── .env.example           ← Env var template
-├── .env.local             ← Local env vars (gitignored) — put GEMINI_API_KEY here
+├── .env                   ← Local env vars (gitignored) — put GEMINI_API_KEY here
 ├── .gitignore
 ├── index.html             ← Vite entry HTML (title: "My Google AI Studio App")
 ├── metadata.json          ← AI Studio metadata (name, description, permissions)
@@ -65,7 +65,7 @@ agrocare/
 | `APP_URL`        | No       | Host URL (used by AI Studio, not needed locally)      |
 | `DISABLE_HMR`    | No       | Set `true` to disable Vite HMR (AI Studio internal)   |
 
-**How the key reaches the frontend:** `vite.config.ts` uses `loadEnv()` to read `.env.local`, then injects the key via `define: { 'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY) }`. Components access it as `process.env.GEMINI_API_KEY`.
+**How the key reaches the frontend:** `vite.config.ts` uses `loadEnv()` to read `.env` (and mode-specific overrides), then injects the key via `define: { 'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY) }`. Components access it as `process.env.GEMINI_API_KEY`.
 
 **Get a key:** https://aistudio.google.com/apikey
 

@@ -8,7 +8,7 @@ const router = express.Router();
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
-  console.warn('WARNING: JWT_SECRET is not set. Using an insecure default. Set JWT_SECRET in .env.local for production.');
+  console.warn('WARNING: JWT_SECRET is not set. Using an insecure default. Set JWT_SECRET in server/.env for production.');
 }
 const SECRET = JWT_SECRET || 'agrocare-dev-secret-change-in-production';
 

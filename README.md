@@ -39,9 +39,9 @@ cd agrocare
 npm install
 
 # 3. Create your environment file
-cp .env.example .env.local
+cp .env.example .env
 
-# 4. Add your Gemini API key to .env.local
+# 4. Add your Gemini API key to `.env` (keep this file out of version control)
 # GEMINI_API_KEY=your_actual_key_here
 
 # 5. Start the development server
@@ -79,7 +79,7 @@ agrocare/
 ├── tsconfig.json          # TypeScript config (strict, ES2022, @/* alias)
 ├── vite.config.ts         # Vite config (React + Tailwind + API key injection)
 ├── .env.example           # Environment variable template
-├── .env.local             # Your local secrets (gitignored)
+├── .env                   # Your local secrets (gitignored)
 ├── CLAUDE.md              # Project reference for AI assistants
 ├── PRODUCTION.md          # Production deployment guide & caveats
 └── src/
