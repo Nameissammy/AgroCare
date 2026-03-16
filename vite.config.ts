@@ -21,7 +21,8 @@ export default defineConfig(({mode}) => {
       hmr: process.env.DISABLE_HMR !== 'true',
       proxy: {
         '/api': {
-          target: 'http://localhost:5000',
+          // backend runs on 4000 by default in this workspace — keep in sync with server/index.js
+          target: 'http://localhost:4000',
           changeOrigin: true,
         },
       },

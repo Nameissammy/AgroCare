@@ -1,6 +1,7 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 
 const router = express.Router();
@@ -26,21 +27,40 @@ const sanitizeUser = (user) => ({
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, role, phone, location } = req.body;
+    console.log('[auth] POST /register headers:', req.headers && req.headers['content-type']);
+    console.log('[auth] POST /register body:', JSON.stringify(req.body));
 
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ message: 'Name, email, password, and role are required.' });
+    // If MongoDB is not connected yet, return a clear 503 so frontend can retry or show message
+    const ready = mongoose.connection && mongoose.connection.readyState;
+    if (ready !== 1) {
+      console.warn(`[auth] DB not ready (state=${ready}) - rejecting register request`);
+      return res.status(503).json({ message: 'Database not connected. Please try again shortly.' });
     }
+    const { name, email, password, role, phone, location } = req.body || {};
 
-    if (!['farmer', 'buyer'].includes(role)) {
-      return res.status(400).json({ message: 'Role must be either farmer or buyer.' });
+    // Basic server-side validation to return clear errors before touching Mongoose
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ message: 'Name is required' });
     }
-
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    const emailVal = email.toLowerCase().trim();
+    const emailRe = /^\S+@\S+\.\S+$/;
+    if (!emailRe.test(emailVal)) {
+      return res.status(400).json({ message: 'Please enter a valid email' });
+    }
+    if (!password || typeof password !== 'string') {
+      return res.status(400).json({ message: 'Password is required' });
+    }
     if (password.length < 8) {
-      return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+    if (!role || (role !== 'farmer' && role !== 'buyer')) {
+      return res.status(400).json({ message: 'Please select a valid role: farmer or buyer' });
     }
 
-    const existing = await User.findOne({ email: email.toLowerCase() });
+    const existing = await User.findOne({ email: emailVal });
     if (existing) {
       return res.status(409).json({ message: 'An account with this email already exists.' });
     }
@@ -48,7 +68,7 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 12);
     const user = await User.create({
       name: name.trim(),
-      email: email.toLowerCase().trim(),
+      email: emailVal,
       password: hashedPassword,
       role,
       phone: phone?.trim() || '',
@@ -58,11 +78,21 @@ router.post('/register', async (req, res) => {
     const token = signToken(user._id, user.role);
     return res.status(201).json({ token, user: sanitizeUser(user) });
   } catch (err) {
+    // Mongoose duplicate key
+    console.error('Register handler caught error:', err);
     if (err.code === 11000) {
       return res.status(409).json({ message: 'An account with this email already exists.' });
     }
-    console.error('Register error:', err.message);
-    return res.status(500).json({ message: 'Something went wrong. Please try again.' });
+    // Validation errors (e.g. email pattern, password minlength)
+    if (err.name === 'ValidationError' && err.errors) {
+      const messages = Object.values(err.errors).map((e) => e.message).join('; ');
+      console.error('Register validation error:', messages);
+      return res.status(400).json({ message: messages });
+    }
+
+    // For debugging: include underlying message when not in production
+    const devInfo = process.env.NODE_ENV === 'production' ? undefined : { name: err.name, message: err.message, stack: err.stack };
+    return res.status(500).json({ message: 'Something went wrong. Please try again.', debug: devInfo });
   }
 });
 
@@ -88,8 +118,14 @@ router.post('/login', async (req, res) => {
     const token = signToken(user._id, user.role);
     return res.json({ token, user: sanitizeUser(user) });
   } catch (err) {
-    console.error('Login error:', err.message);
-    return res.status(500).json({ message: 'Something went wrong. Please try again.' });
+    console.error('Login handler caught error:', err);
+    if (err.name === 'ValidationError' && err.errors) {
+      const messages = Object.values(err.errors).map((e) => e.message).join('; ');
+      console.error('Login validation error:', messages);
+      return res.status(400).json({ message: messages });
+    }
+    const devInfo = process.env.NODE_ENV === 'production' ? undefined : { name: err.name, message: err.message, stack: err.stack };
+    return res.status(500).json({ message: 'Something went wrong. Please try again.', debug: devInfo });
   }
 });
 
