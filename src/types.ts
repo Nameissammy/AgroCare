@@ -20,3 +20,23 @@ export interface Article {
   excerpt: string;
   level?: 'Beginner' | 'Intermediate' | 'Advanced';
 }
+
+export type UserRole = 'farmer' | 'buyer';
+
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  phone?: string;
+  location?: string;
+}
+
+export interface RegisterData {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+  phone?: string;
+  location?: string;
+}

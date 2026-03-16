@@ -4,12 +4,11 @@ import {
   TrendingUp, 
   Search, 
   BookOpen, 
-  MessageSquare,
-  User,
-  Settings,
+  LogOut,
   Tractor
 } from 'lucide-react';
 import { Screen } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   activeScreen: Screen;
@@ -17,6 +16,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeScreen, setActiveScreen }: SidebarProps) {
+  const { user, logout } = useAuth();
   const navItems = [
     { id: 'dashboard' as Screen, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'mandi-prices' as Screen, label: 'Mandi Prices', icon: TrendingUp },
@@ -55,17 +55,20 @@ export default function Sidebar({ activeScreen, setActiveScreen }: SidebarProps)
 
       <div className="p-4 border-t border-emerald-50">
         <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
-          <div className="size-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 overflow-hidden">
-            <img 
-              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop" 
-              alt="Profile"
-              className="w-full h-full object-cover"
-            />
+          <div className="size-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm shrink-0">
+            {user?.name.charAt(0).toUpperCase() ?? '?'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold truncate">Rajesh Kumar</p>
-            <p className="text-xs text-slate-500 truncate">Premium Farmer</p>
+            <p className="text-sm font-bold truncate">{user?.name ?? 'User'}</p>
+            <p className="text-xs text-slate-500 truncate capitalize">{user?.role ?? ''}</p>
           </div>
+          <button
+            onClick={logout}
+            title="Sign out"
+            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
+          >
+            <LogOut size={16} />
+          </button>
         </div>
       </div>
     </aside>
