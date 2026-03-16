@@ -16,6 +16,7 @@ function AppShell() {
   const { user, isLoading } = useAuth();
   const [activeScreen, setActiveScreen] = useState<Screen>('dashboard');
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
 
   if (isLoading) {
     return (
@@ -65,7 +66,12 @@ function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
-      <Sidebar activeScreen={activeScreen} setActiveScreen={setActiveScreen} />
+      <Sidebar
+        activeScreen={activeScreen}
+        setActiveScreen={setActiveScreen}
+        isExpanded={isSidebarExpanded}
+        onToggleExpand={() => setIsSidebarExpanded((prev) => !prev)}
+      />
 
       <main className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <Header />

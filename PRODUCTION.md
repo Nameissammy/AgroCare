@@ -7,8 +7,9 @@
 ## Table of Contents
 
 - [Build for Production](#build-for-production)
+- [Runtime Topology](#runtime-topology)
 - [API Key Exposure (Critical)](#api-key-exposure-critical)
-- [Recommended Architecture for Production](#recommended-architecture-for-production)
+- [Authentication Status](#authentication-status)
 - [Environment Variables](#environment-variables)
 - [Static Data Limitations](#static-data-limitations)
 - [Security Checklist](#security-checklist)
@@ -27,9 +28,24 @@ npm run preview
 
 # Clean build output
 npm run clean
+
+# Start API server
+npm run server
 ```
 
-The production build outputs to `dist/`. This folder is gitignored and should never be committed.
+The production frontend build outputs to `dist/`. This folder is gitignored and should never be committed.
+
+---
+
+## Runtime Topology
+
+Current architecture is full-stack:
+
+- **Frontend**: Vite React app on port `3000`
+- **Backend**: Express API on port `4000` (default)
+- **Database**: MongoDB (local or Atlas)
+
+In development, Vite proxies `/api/*` to `http://localhost:4000`.
 
 ---
 
@@ -65,11 +81,32 @@ define: {
 
 ---
 
+## Authentication Status
+
+Authentication is now implemented with:
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- User roles: `farmer` and `buyer`
+- Password hashing: `bcryptjs`
+- Session token: JWT (7-day expiry)
+
+Current frontend session storage uses browser `localStorage` for JWT + user profile.
+
+### Production Recommendation for Auth
+
+- Move from `localStorage` tokens to **HTTP-only secure cookies** to reduce XSS token theft risk.
+- Add token refresh/rotation and logout invalidation.
+- Add authorization middleware for protected backend routes.
+- Add request rate limiting on auth endpoints.
+
+---
+
 ## Recommended Architecture for Production
 
-To deploy AgroCare securely, you need to **move the Gemini API calls behind a backend proxy**. The frontend should never hold the API key directly.
+To deploy AgroCare securely, keep API secrets server-side and expand the existing backend:
 
-### Option 1: Add a Backend API Proxy
+### Option 1: Use Existing Express Backend as API Proxy
 
 ```
 Browser (React app)
@@ -81,11 +118,11 @@ Google Gemini API
 
 **Steps:**
 
-1. Create a backend server (the project already has `express` in dependencies).
-2. Move the `GoogleGenAI` calls from `Chatbot.tsx` and `DiseaseDetection.tsx` to backend API routes.
-3. Store `GEMINI_API_KEY` as a server-side environment variable only.
-4. The frontend calls your backend endpoints instead of Gemini directly.
-5. Add rate limiting and authentication to your backend to prevent abuse.
+1. Add backend routes for Gemini use cases (`/api/chat`, `/api/disease-detect`).
+2. Move `GoogleGenAI` calls from `Chatbot.tsx` and `DiseaseDetection.tsx` into those routes.
+3. Store `GEMINI_API_KEY` in backend env only.
+4. Keep frontend calls limited to your own `/api/*` endpoints.
+5. Add auth + rate limiting + validation on these endpoints.
 
 **Components to refactor:**
 
@@ -114,15 +151,22 @@ This avoids maintaining a full backend server while keeping the key server-side.
 
 ### Local Development (Current Setup)
 
-| Variable         | Location     | Behavior                                 |
-| ---------------- | ------------ | ---------------------------------------- |
-| `GEMINI_API_KEY` | `.env`       | Injected at build time via Vite `define` |
+| Variable         | Location          | Behavior                                 |
+| ---------------- | ----------------- | ---------------------------------------- |
+| `GEMINI_API_KEY` | `.env/.env.local` | Injected at build time via Vite `define` |
+| `MONGODB_URI`    | `.env/.env.local` | Backend MongoDB connection string        |
+| `JWT_SECRET`     | `.env/.env.local` | Backend JWT signing secret               |
+| `CORS_ORIGIN`    | `.env/.env.local` | Allowed origin for Express API           |
+| `PORT`           | `.env/.env.local` | Express server port (default `4000`)     |
 
 ### Production (Recommended)
 
-| Variable         | Location        | Behavior                                      |
-| ---------------- | --------------- | --------------------------------------------- |
-| `GEMINI_API_KEY` | Server env only | Never sent to the client; used by backend API |
+| Variable         | Location        | Behavior                                             |
+| ---------------- | --------------- | ---------------------------------------------------- |
+| `GEMINI_API_KEY` | Server env only | Never sent to the client; used by backend API routes |
+| `MONGODB_URI`    | Server env only | Used by backend for user/auth and application data   |
+| `JWT_SECRET`     | Server env only | Used by backend auth token issuance/verification     |
+| `CORS_ORIGIN`    | Server env only | Lock to deployed frontend domain                     |
 
 **Never hardcode API keys in source code or commit them to version control.**
 
@@ -141,7 +185,7 @@ The following data is hardcoded and will not update dynamically in production:
 | Images       | Unsplash CDN URLs (hardcoded)     | Host images locally or use your own CDN                        |
 | Scan History | Static "12 Total"                 | Persist to a database                                          |
 | Farm Health  | Static "88/100"                   | Calculate from actual scan results                             |
-| User Profile | Hardcoded "Rajesh Kumar"          | Implement authentication                                       |
+| User Profile | Real user from auth session       | Add profile edit/settings APIs                                 |
 
 ---
 
@@ -151,7 +195,9 @@ Before deploying to production, verify the following:
 
 - [ ] **API key is NOT in client-side code** — moved to a backend proxy
 - [ ] **Rate limiting** is implemented on backend API routes
-- [ ] **Authentication** is implemented (user login system)
+- [x] **Authentication baseline** is implemented (register/login + JWT)
+- [ ] **JWT stored in HTTP-only cookies** (recommended upgrade from localStorage)
+- [ ] **Protected route middleware** is implemented for non-public APIs
 - [ ] **CORS** is configured to only allow your frontend domain
 - [ ] **HTTPS** is enforced on all endpoints
 - [ ] **Content Security Policy (CSP)** headers are set
@@ -187,20 +233,20 @@ npm run build
 
 ## Unused Dependencies
 
-The project ships with backend dependencies from the AI Studio template that are not actively used:
+Some dependencies/files are still legacy artifacts and should be reviewed before production:
 
-| Package          | Version | Purpose                   | Production Action                            |
-| ---------------- | ------- | ------------------------- | -------------------------------------------- |
-| `express`        | 4.21    | HTTP server framework     | Use if building backend proxy                |
-| `better-sqlite3` | 12.4    | SQLite3 database bindings | Use for local data persistence               |
-| `dotenv`         | 17.2    | Env var loader            | Vite handles this; remove or use for backend |
+| Package/File                           | Current Use                             | Production Action                                              |
+| -------------------------------------- | --------------------------------------- | -------------------------------------------------------------- |
+| `better-sqlite3`                       | Unused in current runtime               | Remove if not needed                                           |
+| `server/controllers/authController.js` | Legacy CJS controller, unused by routes | Remove or migrate to ESM if you plan to use controllers        |
+| `server/package.json`                  | Separate backend package metadata       | Keep only if intentionally running backend as separate package |
 
-If you build a backend proxy, these dependencies are already available. Otherwise, they can be removed to reduce install size:
+If you remove unused dependencies from the root app:
 
 ```bash
-npm uninstall express better-sqlite3 dotenv @types/express
+npm uninstall better-sqlite3
 ```
 
 ---
 
-_Last updated: 2026-03-09_
+_Last updated: 2026-03-16_

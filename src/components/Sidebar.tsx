@@ -4,19 +4,20 @@ import {
   TrendingUp, 
   Search, 
   BookOpen, 
-  LogOut,
+  ChevronLeft,
+  ChevronRight,
   Tractor
 } from 'lucide-react';
 import { Screen } from '../types';
-import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   activeScreen: Screen;
   setActiveScreen: (screen: Screen) => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
-export default function Sidebar({ activeScreen, setActiveScreen }: SidebarProps) {
-  const { user, logout } = useAuth();
+export default function Sidebar({ activeScreen, setActiveScreen, isExpanded, onToggleExpand }: SidebarProps) {
   const navItems = [
     { id: 'dashboard' as Screen, label: 'Dashboard', icon: LayoutDashboard },
     { id: 'mandi-prices' as Screen, label: 'Mandi Prices', icon: TrendingUp },
@@ -25,52 +26,47 @@ export default function Sidebar({ activeScreen, setActiveScreen }: SidebarProps)
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-emerald-100 hidden md:flex flex-col sticky top-0 h-screen">
-      <div className="p-6 flex items-center gap-3">
+    <aside
+      className={`relative z-20 overflow-visible bg-white border-r border-emerald-100 hidden md:flex flex-col sticky top-0 h-screen transition-all duration-200 ${
+        isExpanded ? 'w-64' : 'w-20'
+      }`}
+    >
+      <button
+        onClick={onToggleExpand}
+        title={isExpanded ? 'Collapse menu' : 'Expand menu'}
+        aria-label={isExpanded ? 'Collapse menu' : 'Expand menu'}
+        className="absolute right-0 top-6 z-30 flex h-8 w-8 translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-emerald-600 text-white shadow-md transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+      >
+        {isExpanded ? <ChevronLeft size={16} strokeWidth={2.5} /> : <ChevronRight size={16} strokeWidth={2.5} />}
+      </button>
+
+      <div className={`p-6 flex items-center ${isExpanded ? 'gap-3' : 'justify-center'}`}>
         <div className="bg-emerald-600 rounded-lg p-2 text-white">
           <Tractor size={24} />
         </div>
-        <div>
+        <div className={isExpanded ? 'block' : 'hidden'}>
           <h1 className="text-emerald-700 text-xl font-bold tracking-tight">AgroCare</h1>
           <p className="text-xs text-slate-500 font-medium">Farmer's Portal</p>
         </div>
       </div>
 
-      <nav className="flex-1 px-4 space-y-1">
+      <nav className={`flex-1 ${isExpanded ? 'px-4' : 'px-2'} space-y-1`}>
         {navItems.map((item) => (
           <button
             key={item.id}
             onClick={() => setActiveScreen(item.id)}
-            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors font-medium ${
+            title={!isExpanded ? item.label : undefined}
+            className={`w-full flex items-center ${isExpanded ? 'gap-3 justify-start px-3' : 'justify-center px-2'} py-2.5 rounded-lg transition-colors font-medium ${
               activeScreen === item.id
                 ? 'bg-emerald-600 text-white'
                 : 'text-slate-600 hover:bg-emerald-50 hover:text-emerald-600'
             }`}
           >
             <item.icon size={20} />
-            <span>{item.label}</span>
+            <span className={isExpanded ? 'inline' : 'hidden'}>{item.label}</span>
           </button>
         ))}
       </nav>
-
-      <div className="p-4 border-t border-emerald-50">
-        <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl">
-          <div className="size-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-sm shrink-0">
-            {user?.name.charAt(0).toUpperCase() ?? '?'}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold truncate">{user?.name ?? 'User'}</p>
-            <p className="text-xs text-slate-500 truncate capitalize">{user?.role ?? ''}</p>
-          </div>
-          <button
-            onClick={logout}
-            title="Sign out"
-            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
-          >
-            <LogOut size={16} />
-          </button>
-        </div>
-      </div>
     </aside>
   );
 }
