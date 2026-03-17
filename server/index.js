@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { dirname, resolve } from "path";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.js";
+import mandiRoutes from "./routes/mandi.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -44,6 +45,7 @@ app.get("/", (_req, res) => {
 
 // Mount auth routes
 app.use("/api/auth", authRoutes);
+app.use("/api/mandi", mandiRoutes);
 
 // Start listening immediately so the app is reachable even if DB is still connecting.
 app.listen(PORT, () => {

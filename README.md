@@ -6,7 +6,7 @@ A comprehensive agricultural platform built with **React 19**, **TypeScript**, *
 
 - **Authentication** — Role-based registration/login for **Farmer** and **Buyer** users with JWT sessions
 - **Dashboard** — Weather overview, live mandi price cards, crop health CTA, featured articles, and farm stats
-- **Mandi Prices** — Agricultural market price tables with filters, trends, summary cards, and alerts
+- **Mandi Prices** — Live Agmarknet daily commodity prices with crop/state search, dropdown filters, and 7-day trend chart
 - **Disease Detection** — Upload a crop photo and get AI-powered disease diagnosis using Gemini Vision (real API)
 - **Knowledge Hub** — Educational articles, category tabs, difficulty levels, and government scheme listings
 - **AI Chatbot** — Floating agricultural expert assistant powered by Gemini AI (real API)
@@ -67,6 +67,7 @@ Frontend runs at **http://localhost:3000** and backend API runs at **http://loca
 | `MONGODB_URI`    | **Yes**  | MongoDB connection string for user/auth data             |
 | `JWT_SECRET`     | **Yes**  | Secret used to sign JWT auth tokens                      |
 | `CORS_ORIGIN`    | No       | Allowed API origin (defaults to `http://localhost:3000`) |
+| `AGMARKNET_API_KEY` | No    | Data.gov.in/Agmarknet API key for higher rate limits      |
 | `PORT`           | No       | Backend API port (defaults to `4000`)                    |
 | `APP_URL`        | No       | Host URL (AI Studio internal, not needed locally)        |
 | `DISABLE_HMR`    | No       | Set `true` to disable Vite HMR (AI Studio internal)      |
@@ -149,7 +150,7 @@ agrocare/
 | Disease Detection | **Real** — Gemini AI Vision API      |
 | Chatbot           | **Real** — Gemini AI Text Generation |
 | Authentication    | **Real** — Express + MongoDB + JWT   |
-| Mandi Prices      | Static — hardcoded sample data       |
+| Mandi Prices      | **Real** — Agmarknet API via Express proxy |
 | Weather           | Static — hardcoded (28°C Sunny)      |
 | Articles          | Static — hardcoded content           |
 | Images            | External — Unsplash CDN URLs         |

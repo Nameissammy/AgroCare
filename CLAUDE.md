@@ -53,6 +53,7 @@ agrocare/
 │   │   └── User.js        ← User schema (name/email/password/role/phone/location)
 │   ├── routes/
 │   │   └── auth.js        ← `/api/auth/register` and `/api/auth/login`
+│   │   └── mandi.js       ← `/api/mandi/prices` proxy for Agmarknet daily prices + trend
 │   ├── controllers/
 │   │   └── authController.js ← Legacy CJS controller (unused)
 │   └── package.json       ← Backend-only package metadata (not required by root scripts)
@@ -152,11 +153,10 @@ agrocare/
 
 ### MandiPrices.tsx — Market Price Data
 
-- Filters: State, Mandi, Date
-- Summary cards: Most Volatile, Top Performer, Market Sentiment, Arrivals
-- Price table: 4 crops (Wheat, Basmati Rice, Cotton, Potato) with min/max/modal prices
-- Mini bar chart price visualization
-- Market news & alerts section
+- Live fetch from backend `/api/mandi/prices` (Agmarknet API via Data.gov.in)
+- Search by crop/commodity name + dropdown filters for State and Commodity
+- Clean data table with Market, Min Price, Max Price, Modal Price
+- Chart.js 7-day modal price trend line chart
 
 ### DiseaseDetection.tsx — AI Crop Disease Analysis
 
@@ -198,7 +198,8 @@ agrocare/
 
 - The app is now **full-stack** (frontend + Express backend) for authentication.
 - Gemini chat and disease detection are still called directly from frontend using `GEMINI_API_KEY` injection; this remains a production security caveat.
-- All market data, weather info, and article content is **hardcoded/static** — no live data APIs.
+- Weather info and article content are **hardcoded/static**.
+- Mandi prices are now live via Agmarknet API proxy (`/api/mandi/prices`).
 - Camera permission is requested in `metadata.json` for disease detection image upload.
 - The `.gitignore` protects all `.env*` files except `.env.example`.
 
