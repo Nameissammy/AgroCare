@@ -52,7 +52,7 @@ function AppShell() {
   const renderScreen = () => {
     switch (activeScreen) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard setActiveScreen={setActiveScreen} />;
       case 'mandi-prices':
         return <MandiPrices />;
       case 'disease-detection':
