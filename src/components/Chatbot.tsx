@@ -11,7 +11,6 @@ import {
   Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleGenAI } from "@google/genai";
 
 interface Message {
   role: 'user' | 'bot';
@@ -45,16 +44,21 @@ export default function Chatbot() {
     setIsLoading(true);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || '' });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: messageText,
-        config: {
-          systemInstruction: "You are an expert agricultural assistant for Indian farmers. Provide practical, accurate, and helpful advice on crop management, pest control, mandi prices, and government schemes. Keep your responses concise and easy to understand. Use a friendly and professional tone. If asked about specific prices, mention that they can check the Mandi Prices section for real-time data.",
-        },
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: messageText,
+          history: messages.slice(-8),
+        }),
       });
 
-      const botMessage: Message = { role: 'bot', content: response.text || "I'm sorry, I couldn't process that. Please try again." };
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to generate response.');
+      }
+
+      const botMessage: Message = { role: 'bot', content: data?.reply || "I'm sorry, I couldn't process that. Please try again." };
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error('Chatbot error:', error);

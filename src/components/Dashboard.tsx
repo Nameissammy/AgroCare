@@ -15,9 +15,65 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
+const DAILY_TIP_STORAGE_KEY = 'agrocare_daily_tip';
+const DAILY_TIP_REFRESH_MS = 24 * 60 * 60 * 1000;
+const DEFAULT_FALLBACK_TIP =
+  'Rotate your wheat crops with legumes to naturally enrich soil nitrogen levels and reduce the need for fertilizers next season.';
+
+type TipSource = 'ai' | 'fallback' | 'local' | 'default';
+
+interface DailyTipState {
+  tip: string;
+  source: TipSource;
+  fetchedAt: string;
+}
+
+const getDefaultTipState = (): DailyTipState => ({
+  tip: DEFAULT_FALLBACK_TIP,
+  source: 'default',
+  fetchedAt: new Date().toISOString(),
+});
+
+const readStoredTip = (): DailyTipState | null => {
+  try {
+    const raw = localStorage.getItem(DAILY_TIP_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw);
+    if (!parsed?.tip || typeof parsed.tip !== 'string') {
+      return null;
+    }
+
+    return {
+      tip: parsed.tip,
+      source: 'local',
+      fetchedAt: typeof parsed.fetchedAt === 'string' ? parsed.fetchedAt : new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+};
+
+const persistTip = (tipState: DailyTipState) => {
+  try {
+    localStorage.setItem(
+      DAILY_TIP_STORAGE_KEY,
+      JSON.stringify({
+        tip: tipState.tip,
+        fetchedAt: tipState.fetchedAt,
+      })
+    );
+  } catch {
+    // no-op: localStorage unavailable
+  }
+};
+
 export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Screen) => void }) {
   const [showForecast, setShowForecast] = useState(false);
   const [forecast, setForecast] = useState<Array<any>>([]);
+  const [dailyTip, setDailyTip] = useState<DailyTipState>(() => readStoredTip() || getDefaultTipState());
 
   // generate a deterministic 7-day forecast (frontend-only)
   useEffect(() => {
@@ -43,6 +99,57 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
       };
     });
     setForecast(days);
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchTip = async (signal?: AbortSignal) => {
+      try {
+        const response = await fetch('/api/tips/daily', { signal });
+        if (!response.ok) {
+          throw new Error(`Unable to fetch daily tip (${response.status})`);
+        }
+
+        const data = await response.json();
+        const nextTip: DailyTipState = {
+          tip: typeof data?.tip === 'string' && data.tip.trim() ? data.tip.trim() : DEFAULT_FALLBACK_TIP,
+          source: data?.source === 'ai' || data?.source === 'fallback' ? data.source : 'fallback',
+          fetchedAt: typeof data?.fetchedAt === 'string' ? data.fetchedAt : new Date().toISOString(),
+        };
+
+        if (!mounted) {
+          return;
+        }
+
+        setDailyTip(nextTip);
+        persistTip(nextTip);
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          return;
+        }
+
+        if (!mounted) {
+          return;
+        }
+
+        const localTip = readStoredTip();
+        setDailyTip(localTip || getDefaultTipState());
+      }
+    };
+
+    const controller = new AbortController();
+    fetchTip(controller.signal);
+
+    const interval = setInterval(() => {
+      fetchTip();
+    }, DAILY_TIP_REFRESH_MS);
+
+    return () => {
+      mounted = false;
+      controller.abort();
+      clearInterval(interval);
+    };
   }, []);
 
   const todayHumidity = forecast.length ? forecast[0].humidity : 45;
@@ -113,7 +220,14 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Daily Farmer Tip</span>
           </div>
           <p className="text-slate-700 font-medium leading-relaxed">
-            Rotate your wheat crops with legumes to naturally enrich soil nitrogen levels and reduce the need for fertilizers next season.
+            {dailyTip.tip}
+          </p>
+          <p className="text-xs text-slate-500 mt-3">
+            {dailyTip.source === 'ai'
+              ? 'Updated with live AI tip.'
+              : dailyTip.source === 'local'
+                ? 'Using last saved tip.'
+                : 'Using fallback tip.'}
           </p>
         </motion.div>
       </section>
