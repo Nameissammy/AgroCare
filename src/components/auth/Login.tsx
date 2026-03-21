@@ -5,9 +5,10 @@ import { useAuth } from '../../contexts/AuthContext';
 
 interface LoginProps {
   onSwitchToRegister: () => void;
+  onSwitchToForgotPassword: () => void;
 }
 
-export default function Login({ onSwitchToRegister }: LoginProps) {
+export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginProps) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -149,6 +150,16 @@ export default function Login({ onSwitchToRegister }: LoginProps) {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            <div className="flex justify-end -mt-2">
+              <button
+                type="button"
+                onClick={onSwitchToForgotPassword}
+                className="text-sm text-emerald-600 font-medium hover:underline"
+              >
+                Forgot password?
+              </button>
             </div>
 
             <button

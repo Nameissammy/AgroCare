@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Screen } from './types';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Sidebar from './components/Sidebar';
@@ -10,13 +10,35 @@ import KnowledgeHub from './components/KnowledgeHub';
 import Chatbot from './components/Chatbot';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import ForgotPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
 import { AnimatePresence, motion } from 'motion/react';
 
 function AppShell() {
   const { user, isLoading } = useAuth();
   const [activeScreen, setActiveScreen] = useState<Screen>('dashboard');
-  const [authView, setAuthView] = useState<'login' | 'register'>('login');
+  const [authView, setAuthView] = useState<'login' | 'register' | 'forgot-password' | 'reset-password'>('login');
+  const [resetToken, setResetToken] = useState('');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (!token) {
+      return;
+    }
+
+    setResetToken(token);
+    setAuthView('reset-password');
+    params.delete('token');
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -40,9 +62,22 @@ function AppShell() {
           transition={{ duration: 0.2 }}
         >
           {authView === 'login' ? (
-            <Login onSwitchToRegister={() => setAuthView('register')} />
-          ) : (
+            <Login
+              onSwitchToRegister={() => setAuthView('register')}
+              onSwitchToForgotPassword={() => setAuthView('forgot-password')}
+            />
+          ) : authView === 'register' ? (
             <Register onSwitchToLogin={() => setAuthView('login')} />
+          ) : authView === 'forgot-password' ? (
+            <ForgotPassword onSwitchToLogin={() => setAuthView('login')} />
+          ) : (
+            <ResetPassword
+              initialToken={resetToken}
+              onSwitchToLogin={() => {
+                setResetToken('');
+                setAuthView('login');
+              }}
+            />
           )}
         </motion.div>
       </AnimatePresence>
@@ -60,7 +95,7 @@ function AppShell() {
       case 'education':
         return <KnowledgeHub />;
       default:
-        return <Dashboard />;
+        return <Dashboard setActiveScreen={setActiveScreen} />;
     }
   };
 
