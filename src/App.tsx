@@ -13,9 +13,11 @@ import Register from './components/auth/Register';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
 import { AnimatePresence, motion } from 'motion/react';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
 function AppShell() {
   const { user, isLoading } = useAuth();
+  const { t } = useLanguage();
   const [activeScreen, setActiveScreen] = useState<Screen>('dashboard');
   const [authView, setAuthView] = useState<'login' | 'register' | 'forgot-password' | 'reset-password'>('login');
   const [resetToken, setResetToken] = useState('');
@@ -45,7 +47,7 @@ function AppShell() {
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-500 text-sm">Loading AgroCare…</p>
+          <p className="text-slate-500 text-sm">{t('app.loading', 'Loading AgroCare…')}</p>
         </div>
       </div>
     );
@@ -135,7 +137,9 @@ function AppShell() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <LanguageProvider>
+        <AppShell />
+      </LanguageProvider>
     </AuthProvider>
   );
 }

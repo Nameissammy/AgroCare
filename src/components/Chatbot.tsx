@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Bot, 
   X, 
-  User, 
   Send, 
   Wheat, 
   Search, 
@@ -11,6 +10,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface Message {
   role: 'user' | 'bot';
@@ -18,10 +18,11 @@ interface Message {
 }
 
 export default function Chatbot() {
+  const { language, t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
-    { role: 'bot', content: "Namaste! I'm your AgroCare assistant. How can I help you with your crops today?" }
+    { role: 'bot', content: t('chatbot.greeting', "Namaste! I'm your AgroCare assistant. How can I help you with your crops today?") }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -50,6 +51,7 @@ export default function Chatbot() {
         body: JSON.stringify({
           message: messageText,
           history: messages.slice(-8),
+          language,
         }),
       });
 
@@ -58,11 +60,11 @@ export default function Chatbot() {
         throw new Error(data?.message || 'Unable to generate response.');
       }
 
-      const botMessage: Message = { role: 'bot', content: data?.reply || "I'm sorry, I couldn't process that. Please try again." };
+      const botMessage: Message = { role: 'bot', content: data?.reply || t('chatbot.error.process', "I'm sorry, I couldn't process that. Please try again.") };
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       console.error('Chatbot error:', error);
-      setMessages(prev => [...prev, { role: 'bot', content: "I'm having trouble connecting right now. Please check your internet or try again later." }]);
+      setMessages(prev => [...prev, { role: 'bot', content: t('chatbot.error.connect', "I'm having trouble connecting right now. Please check your internet or try again later.") }]);
     } finally {
       setIsLoading(false);
     }
@@ -85,8 +87,8 @@ export default function Chatbot() {
                   <Bot size={24} />
                 </div>
                 <div>
-                  <h3 className="font-bold">AgroCare Assistant</h3>
-                  <p className="text-[10px] text-emerald-100 uppercase tracking-widest font-bold">Online • AI Powered</p>
+                  <h3 className="font-bold">{t('chatbot.title', 'AgroCare Assistant')}</h3>
+                  <p className="text-[10px] text-emerald-100 uppercase tracking-widest font-bold">{t('chatbot.status', 'Online • AI Powered')}</p>
                 </div>
               </div>
               <button 
@@ -114,7 +116,7 @@ export default function Chatbot() {
                 <div className="flex justify-start">
                   <div className="bg-white p-3 rounded-2xl rounded-tl-none border border-emerald-50 shadow-sm flex items-center gap-2">
                     <Loader2 size={16} className="animate-spin text-emerald-600" />
-                    <span className="text-xs text-slate-500 font-medium">Thinking...</span>
+                    <span className="text-xs text-slate-500 font-medium">{t('chatbot.thinking', 'Thinking...')}</span>
                   </div>
                 </div>
               )}
@@ -125,9 +127,9 @@ export default function Chatbot() {
             {!isLoading && (
               <div className="px-4 py-2 flex flex-wrap gap-2 border-t border-emerald-50 bg-white">
                 {[
-                  { label: 'Check Wheat Prices', icon: Wheat },
-                  { label: 'Disease Help', icon: Search },
-                  { label: 'Weather Alert', icon: CloudRain },
+                  { label: t('chatbot.quick.wheat', 'Check Wheat Prices'), icon: Wheat },
+                  { label: t('chatbot.quick.disease', 'Disease Help'), icon: Search },
+                  { label: t('chatbot.quick.weather', 'Weather Alert'), icon: CloudRain },
                 ].map((action, i) => (
                   <button 
                     key={i} 
@@ -151,7 +153,7 @@ export default function Chatbot() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about crops, pests, or prices..."
+                  placeholder={t('chatbot.placeholder', 'Ask about crops, pests, or prices...')}
                   className="flex-1 bg-slate-50 border-none rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-emerald-500/50"
                 />
                 <button 

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Tractor, Mail, AlertCircle, Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ForgotPasswordProps {
   onSwitchToLogin: () => void;
 }
 
 export default function ForgotPassword({ onSwitchToLogin }: ForgotPasswordProps) {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -19,7 +21,7 @@ export default function ForgotPassword({ onSwitchToLogin }: ForgotPasswordProps)
 
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) {
-      setError('Email is required.');
+      setError(t('auth.forgot.emailRequired', 'Email is required.'));
       return;
     }
 
@@ -33,12 +35,12 @@ export default function ForgotPassword({ onSwitchToLogin }: ForgotPasswordProps)
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data?.message || 'Unable to process request. Please try again.');
+        throw new Error(data?.message || t('auth.forgot.requestFailed', 'Unable to process request. Please try again.'));
       }
 
-      setSuccess(data?.message || 'If an account exists, a reset link has been sent.');
+      setSuccess(data?.message || t('auth.forgot.success', 'If an account exists, a reset link has been sent.'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to process request. Please try again.');
+      setError(err instanceof Error ? err.message : t('auth.forgot.requestFailed', 'Unable to process request. Please try again.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -60,8 +62,8 @@ export default function ForgotPassword({ onSwitchToLogin }: ForgotPasswordProps)
         </div>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Forgot password</h1>
-          <p className="text-slate-500">Enter your email and we’ll send a reset link.</p>
+          <h1 className="text-3xl font-bold text-slate-800 mb-2">{t('auth.forgot.title', 'Forgot password')}</h1>
+          <p className="text-slate-500">{t('auth.forgot.subtitle', 'Enter your email and we’ll send a reset link.')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5" noValidate>
@@ -89,7 +91,7 @@ export default function ForgotPassword({ onSwitchToLogin }: ForgotPasswordProps)
 
           <div>
             <label htmlFor="forgot-email" className="block text-sm font-medium text-slate-700 mb-1.5">
-              Email address
+              {t('auth.email', 'Email address')}
             </label>
             <div className="relative">
               <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -112,7 +114,7 @@ export default function ForgotPassword({ onSwitchToLogin }: ForgotPasswordProps)
             className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
           >
             {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isSubmitting ? 'Sending link…' : 'Send reset link'}
+            {isSubmitting ? t('auth.forgot.sending', 'Sending link…') : t('auth.forgot.send', 'Send reset link')}
           </button>
         </form>
 
@@ -123,7 +125,7 @@ export default function ForgotPassword({ onSwitchToLogin }: ForgotPasswordProps)
             className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to sign in
+            {t('auth.backToSignIn', 'Back to sign in')}
           </button>
         </div>
       </motion.div>

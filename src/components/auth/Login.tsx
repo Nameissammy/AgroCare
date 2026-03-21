@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Tractor, Mail, Lock, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface LoginProps {
   onSwitchToRegister: () => void;
@@ -10,6 +11,7 @@ interface LoginProps {
 
 export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }: LoginProps) {
   const { login } = useAuth();
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +25,7 @@ export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }: 
     try {
       await login(email.trim(), password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed. Please try again.');
+      setError(err instanceof Error ? err.message : t('auth.login.failed', 'Login failed. Please try again.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -90,8 +92,8 @@ export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }: 
           </div>
 
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">Welcome back</h1>
-            <p className="text-slate-500">Sign in to your AgroCare account</p>
+            <h1 className="text-3xl font-bold text-slate-800 mb-2">{t('auth.login.welcome', 'Welcome back')}</h1>
+            <p className="text-slate-500">{t('auth.login.subtitle', 'Sign in to your AgroCare account')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
@@ -108,7 +110,7 @@ export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }: 
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Email address
+                {t('auth.email', 'Email address')}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -127,7 +129,7 @@ export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }: 
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Password
+                {t('auth.password', 'Password')}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -145,7 +147,7 @@ export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }: 
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -158,7 +160,7 @@ export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }: 
                 onClick={onSwitchToForgotPassword}
                 className="text-sm text-emerald-600 font-medium hover:underline"
               >
-                Forgot password?
+                {t('auth.forgotPassword', 'Forgot password?')}
               </button>
             </div>
 
@@ -168,17 +170,17 @@ export default function Login({ onSwitchToRegister, onSwitchToForgotPassword }: 
               className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isSubmitting ? 'Signing in…' : 'Sign in'}
+              {isSubmitting ? t('auth.login.signingIn', 'Signing in…') : t('auth.login.signIn', 'Sign in')}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-slate-500">
-            Don't have an account?{' '}
+            {t('auth.login.noAccount', "Don't have an account?")} {' '}
             <button
               onClick={onSwitchToRegister}
               className="text-emerald-600 font-semibold hover:underline"
             >
-              Create one for free
+              {t('auth.login.createFree', 'Create one for free')}
             </button>
           </p>
         </motion.div>

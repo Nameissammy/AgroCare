@@ -14,6 +14,7 @@ import {
   Search
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const DAILY_TIP_STORAGE_KEY = 'agrocare_daily_tip';
 const DAILY_TIP_REFRESH_MS = 24 * 60 * 60 * 1000;
@@ -34,9 +35,11 @@ const getDefaultTipState = (): DailyTipState => ({
   fetchedAt: new Date().toISOString(),
 });
 
-const readStoredTip = (): DailyTipState | null => {
+const getTipStorageKey = (language: string) => `${DAILY_TIP_STORAGE_KEY}_${language}`;
+
+const readStoredTip = (language: string): DailyTipState | null => {
   try {
-    const raw = localStorage.getItem(DAILY_TIP_STORAGE_KEY);
+    const raw = localStorage.getItem(getTipStorageKey(language));
     if (!raw) {
       return null;
     }
@@ -56,10 +59,10 @@ const readStoredTip = (): DailyTipState | null => {
   }
 };
 
-const persistTip = (tipState: DailyTipState) => {
+const persistTip = (language: string, tipState: DailyTipState) => {
   try {
     localStorage.setItem(
-      DAILY_TIP_STORAGE_KEY,
+      getTipStorageKey(language),
       JSON.stringify({
         tip: tipState.tip,
         fetchedAt: tipState.fetchedAt,
@@ -71,9 +74,10 @@ const persistTip = (tipState: DailyTipState) => {
 };
 
 export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Screen) => void }) {
+  const { language, t } = useLanguage();
   const [showForecast, setShowForecast] = useState(false);
   const [forecast, setForecast] = useState<Array<any>>([]);
-  const [dailyTip, setDailyTip] = useState<DailyTipState>(() => readStoredTip() || getDefaultTipState());
+  const [dailyTip, setDailyTip] = useState<DailyTipState>(() => readStoredTip(language) || getDefaultTipState());
 
   // generate a deterministic 7-day forecast (frontend-only)
   useEffect(() => {
@@ -103,10 +107,11 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
 
   useEffect(() => {
     let mounted = true;
+    setDailyTip(readStoredTip(language) || getDefaultTipState());
 
     const fetchTip = async (signal?: AbortSignal) => {
       try {
-        const response = await fetch('/api/tips/daily', { signal });
+        const response = await fetch(`/api/tips/daily?language=${encodeURIComponent(language)}`, { signal });
         if (!response.ok) {
           throw new Error(`Unable to fetch daily tip (${response.status})`);
         }
@@ -123,7 +128,7 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
         }
 
         setDailyTip(nextTip);
-        persistTip(nextTip);
+        persistTip(language, nextTip);
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           return;
@@ -133,7 +138,7 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
           return;
         }
 
-        const localTip = readStoredTip();
+        const localTip = readStoredTip(language);
         setDailyTip(localTip || getDefaultTipState());
       }
     };
@@ -150,7 +155,7 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
       controller.abort();
       clearInterval(interval);
     };
-  }, []);
+  }, [language]);
 
   const todayHumidity = forecast.length ? forecast[0].humidity : 45;
 
@@ -165,19 +170,19 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
           <div className="z-10">
-            <h2 className="text-4xl font-black mb-2">28°C Sunny</h2>
-            <p className="text-white/80 font-medium">Perfect weather for wheat harvesting in your region today.</p>
+            <h2 className="text-4xl font-black mb-2">28°C {t('dashboard.weather.sunny', 'Sunny')}</h2>
+            <p className="text-white/80 font-medium">{t('dashboard.weather.subtitle', 'Perfect weather for wheat harvesting in your region today.')}</p>
           </div>
           <div className="z-10 mt-6 flex items-center gap-4">
             <button
               onClick={() => setShowForecast((s) => !s)}
               className="bg-white text-emerald-700 px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors"
             >
-              {showForecast ? 'Hide 7-Day Forecast' : 'View 7-Day Forecast'}
+              {showForecast ? t('dashboard.forecast.hide', 'Hide 7-Day Forecast') : t('dashboard.forecast.view', 'View 7-Day Forecast')}
             </button>
             <div className="flex items-center gap-2 text-sm text-white/90">
               <CloudRain size={18} />
-              <span>Humidity: {todayHumidity}%</span>
+              <span>{t('dashboard.humidity', 'Humidity')}: {todayHumidity}%</span>
             </div>
           </div>
         </motion.div>
@@ -190,17 +195,23 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
             className="lg:col-span-3"
           >
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-emerald-50">
-              <h4 className="font-bold mb-3">7-Day Forecast</h4>
+              <h4 className="font-bold mb-3">{t('dashboard.forecast.title', '7-Day Forecast')}</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
                 {forecast.map((d, idx) => {
                   const date = new Date(d.date);
                   const day = date.toLocaleDateString(undefined, { weekday: 'short' });
+                  const conditionText =
+                    d.cond === 'Clouds'
+                      ? t('dashboard.weather.clouds', 'Clouds')
+                      : d.cond === 'Partly Cloudy'
+                        ? t('dashboard.weather.partlyCloudy', 'Partly Cloudy')
+                        : t('dashboard.weather.sunny', 'Sunny');
                   return (
                     <div key={idx} className="p-3 rounded-lg bg-emerald-50 text-emerald-700 text-center">
                       <div className="text-xs font-semibold">{day}</div>
                       <div className="text-sm font-bold mt-1">{d.high}° / {d.low}°</div>
-                      <div className="text-xs text-slate-600 mt-1">{d.cond}</div>
-                      <div className="text-xs mt-2">Humidity: <span className="font-semibold">{d.humidity}%</span></div>
+                      <div className="text-xs text-slate-600 mt-1">{conditionText}</div>
+                      <div className="text-xs mt-2">{t('dashboard.humidity', 'Humidity')}: <span className="font-semibold">{d.humidity}%</span></div>
                     </div>
                   );
                 })}
@@ -217,17 +228,17 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
         >
           <div className="flex items-center gap-3 mb-3">
             <Lightbulb className="text-emerald-600" size={20} />
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Daily Farmer Tip</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">{t('dashboard.dailyTip', 'Daily Farmer Tip')}</span>
           </div>
           <p className="text-slate-700 font-medium leading-relaxed">
             {dailyTip.tip}
           </p>
           <p className="text-xs text-slate-500 mt-3">
             {dailyTip.source === 'ai'
-              ? 'Updated with live AI tip.'
+              ? t('dashboard.tip.live', 'Updated with live AI tip.')
               : dailyTip.source === 'local'
-                ? 'Using last saved tip.'
-                : 'Using fallback tip.'}
+                ? t('dashboard.tip.saved', 'Using last saved tip.')
+                : t('dashboard.tip.fallback', 'Using fallback tip.')}
           </p>
         </motion.div>
       </section>
@@ -237,19 +248,19 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
         {/* Live Mandi Prices */}
         <div className="bg-white rounded-2xl p-6 border border-emerald-50 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-lg">Live Mandi Prices</h3>
+            <h3 className="font-bold text-lg">{t('dashboard.mandi.title', 'Live Mandi Prices')}</h3>
             <button
               onClick={() => setActiveScreen('mandi-prices')}
               className="text-emerald-600 text-sm font-semibold hover:underline flex items-center gap-1"
             >
-              View All <ChevronRight size={14} />
+              {t('dashboard.viewAll', 'View All')} <ChevronRight size={14} />
             </button>
           </div>
           <div className="space-y-4">
             {[
-              { name: 'Wheat', price: '₹2,125', trend: '+2.4%', up: true, icon: '🌾', color: 'bg-orange-50 text-orange-600' },
-              { name: 'Rice', price: '₹1,950', trend: '-0.8%', up: false, icon: '🍚', color: 'bg-yellow-50 text-yellow-600' },
-              { name: 'Tomato', price: '₹3,400', trend: '+5.2%', up: true, icon: '🍅', color: 'bg-red-50 text-red-600' },
+              { name: t('dashboard.crop.wheat', 'Wheat'), price: '₹2,125', trend: '+2.4%', up: true, icon: '🌾', color: 'bg-orange-50 text-orange-600' },
+              { name: t('dashboard.crop.rice', 'Rice'), price: '₹1,950', trend: '-0.8%', up: false, icon: '🍚', color: 'bg-yellow-50 text-yellow-600' },
+              { name: t('dashboard.crop.tomato', 'Tomato'), price: '₹3,400', trend: '+5.2%', up: true, icon: '🍅', color: 'bg-red-50 text-red-600' },
             ].map((crop, i) => (
               <div key={i} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                 <div className="flex items-center gap-3">
@@ -258,7 +269,7 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
                   </div>
                   <div>
                     <p className="font-bold text-sm">{crop.name}</p>
-                    <p className="text-xs text-slate-500">Per Quintal</p>
+                    <p className="text-xs text-slate-500">{t('dashboard.perQuintal', 'Per Quintal')}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -276,19 +287,19 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
         <div className="bg-white rounded-2xl p-6 border border-emerald-50 shadow-sm flex flex-col">
           <div className="flex items-center gap-3 mb-4">
             <Search className="text-emerald-600" size={20} />
-            <h3 className="font-bold text-lg">Crop Health AI</h3>
+            <h3 className="font-bold text-lg">{t('dashboard.cropHealth.title', 'Crop Health AI')}</h3>
           </div>
           <div className="flex-1 bg-emerald-50/50 rounded-xl border-2 border-dashed border-emerald-200 flex flex-col items-center justify-center p-6 text-center">
             <div className="size-16 bg-white rounded-full shadow-sm flex items-center justify-center mb-4 text-emerald-600">
               <Camera size={32} />
             </div>
-            <p className="text-sm font-bold mb-1">Spot something unusual?</p>
-            <p className="text-xs text-slate-500 mb-4">Upload a photo of your crop to diagnose pests and diseases instantly.</p>
+            <p className="text-sm font-bold mb-1">{t('dashboard.cropHealth.prompt', 'Spot something unusual?')}</p>
+            <p className="text-xs text-slate-500 mb-4">{t('dashboard.cropHealth.subtitle', 'Upload a photo of your crop to diagnose pests and diseases instantly.')}</p>
             <button
               onClick={() => setActiveScreen('disease-detection')}
               className="w-full bg-emerald-600 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-emerald-700 transition-colors"
             >
-              Diagnose Your Crop Now
+              {t('dashboard.cropHealth.action', 'Diagnose Your Crop Now')}
             </button>
           </div>
         </div>
@@ -296,29 +307,29 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
         {/* Knowledge Hub */}
         <div className="bg-white rounded-2xl p-6 border border-emerald-50 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-bold text-lg">Knowledge Hub</h3>
+            <h3 className="font-bold text-lg">{t('dashboard.knowledge.title', 'Knowledge Hub')}</h3>
             <button
               onClick={() => setActiveScreen('education')}
               className="text-emerald-600 text-sm font-semibold hover:underline"
             >
-              Read All
+              {t('dashboard.readAll', 'Read All')}
             </button>
           </div>
           <div className="space-y-4">
             {[
               { 
-                title: 'Organic Pest Control: 5 Natural Methods for 2024', 
-                meta: '4 min read • Agriculture',
+                title: t('dashboard.article.1.title', 'Organic Pest Control: 5 Natural Methods for 2024'), 
+                meta: t('dashboard.article.1.meta', '4 min read • Agriculture'),
                 img: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?w=100&h=100&fit=crop'
               },
               { 
-                title: 'Smart Irrigation Systems: Reducing Water Waste', 
-                meta: '6 min read • Tech',
+                title: t('dashboard.article.2.title', 'Smart Irrigation Systems: Reducing Water Waste'), 
+                meta: t('dashboard.article.2.meta', '6 min read • Tech'),
                 img: 'https://images.unsplash.com/photo-1563514227147-6d2ff665a6a0?w=100&h=100&fit=crop'
               },
               { 
-                title: 'Understanding Soil pH: A Guide for Wheat Farmers', 
-                meta: '8 min read • Soil Science',
+                title: t('dashboard.article.3.title', 'Understanding Soil pH: A Guide for Wheat Farmers'), 
+                meta: t('dashboard.article.3.meta', '8 min read • Soil Science'),
                 img: 'https://images.unsplash.com/photo-1464226184884-fa280b87c399?w=100&h=100&fit=crop'
               },
             ].map((article, i) => (
@@ -341,10 +352,10 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
       {/* Footer Summary Stats */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Season Progress', value: 'Day 42/90', icon: Calendar, color: 'bg-blue-50 text-blue-600' },
-          { label: 'Yield Prediction', value: '+12% vs LY', icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
-          { label: 'Estimated Income', value: '₹4.2 Lakhs', icon: Wallet, color: 'bg-orange-50 text-orange-600' },
-          { label: 'Government Subsidy', value: 'Active', icon: CheckCircle2, color: 'bg-purple-50 text-purple-600' },
+          { label: t('dashboard.stats.seasonProgress', 'Season Progress'), value: t('dashboard.stats.seasonValue', 'Day 42/90'), icon: Calendar, color: 'bg-blue-50 text-blue-600' },
+          { label: t('dashboard.stats.yieldPrediction', 'Yield Prediction'), value: t('dashboard.stats.yieldValue', '+12% vs LY'), icon: TrendingUp, color: 'bg-emerald-50 text-emerald-600' },
+          { label: t('dashboard.stats.estimatedIncome', 'Estimated Income'), value: t('dashboard.stats.incomeValue', '₹4.2 Lakhs'), icon: Wallet, color: 'bg-orange-50 text-orange-600' },
+          { label: t('dashboard.stats.governmentSubsidy', 'Government Subsidy'), value: t('dashboard.stats.subsidyValue', 'Active'), icon: CheckCircle2, color: 'bg-purple-50 text-purple-600' },
         ].map((stat, i) => (
           <div key={i} className="bg-white p-4 rounded-xl border border-emerald-50 flex items-center gap-4">
             <div className={`p-2 rounded-lg ${stat.color}`}>

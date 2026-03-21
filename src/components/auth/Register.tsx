@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { UserRole } from '../../types';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface RegisterProps {
   onSwitchToLogin: () => void;
@@ -23,6 +24,7 @@ interface RegisterProps {
 
 export default function Register({ onSwitchToLogin }: RegisterProps) {
   const { register } = useAuth();
+  const { t } = useLanguage();
 
   const [form, setForm] = useState({
     name: '',
@@ -45,9 +47,9 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
     e.preventDefault();
     setError('');
 
-    if (!form.role) return setError('Please select your role (Farmer or Buyer).');
-    if (form.password.length < 8) return setError('Password must be at least 8 characters.');
-    if (form.password !== form.confirmPassword) return setError('Passwords do not match.');
+    if (!form.role) return setError(t('auth.register.roleRequired', 'Please select your role (Farmer or Buyer).'));
+    if (form.password.length < 8) return setError(t('auth.register.passwordMin', 'Password must be at least 8 characters.'));
+    if (form.password !== form.confirmPassword) return setError(t('auth.register.passwordMismatch', 'Passwords do not match.'));
 
     setIsSubmitting(true);
     try {
@@ -60,7 +62,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
         location: form.location.trim() || undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+      setError(err instanceof Error ? err.message : t('auth.register.failed', 'Registration failed. Please try again.'));
     } finally {
       setIsSubmitting(false);
     }
@@ -69,15 +71,15 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
   const roleOptions: { value: UserRole; label: string; icon: React.ReactNode; desc: string }[] = [
     {
       value: 'farmer',
-      label: 'Farmer',
+      label: t('role.farmer', 'Farmer'),
       icon: <Sprout className="w-5 h-5" />,
-      desc: 'I grow crops and want market prices, disease detection & expert advice.',
+      desc: t('auth.register.role.farmerDesc', 'I grow crops and want market prices, disease detection & expert advice.'),
     },
     {
       value: 'buyer',
-      label: 'Buyer',
+      label: t('role.buyer', 'Buyer'),
       icon: <ShoppingBag className="w-5 h-5" />,
-      desc: 'I purchase agricultural produce and want to track prices & availability.',
+      desc: t('auth.register.role.buyerDesc', 'I purchase agricultural produce and want to track prices & availability.'),
     },
   ];
 
@@ -99,17 +101,17 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
 
         <div className="relative z-10">
           <h2 className="text-4xl font-bold text-white leading-snug mb-4">
-            Join India's<br />Farming Community
+            {t('auth.register.leftTitleLine1', "Join India's")}<br />{t('auth.register.leftTitleLine2', 'Farming Community')}
           </h2>
           <p className="text-emerald-100 text-lg leading-relaxed mb-8">
-            Whether you're a farmer or a buyer, AgroCare gives you the tools and information you need to succeed in agriculture.
+            {t('auth.register.leftSubtitle', "Whether you're a farmer or a buyer, AgroCare gives you the tools and information you need to succeed in agriculture.")}
           </p>
           <div className="space-y-4">
             {[
-              'Real-time mandi prices across 500+ markets',
-              'AI-powered crop disease detection',
-              'Expert agricultural knowledge hub',
-              'dedicated AI chatbot for farmers',
+              t('auth.register.feature.1', 'Real-time mandi prices across 500+ markets'),
+              t('auth.register.feature.2', 'AI-powered crop disease detection'),
+              t('auth.register.feature.3', 'Expert agricultural knowledge hub'),
+              t('auth.register.feature.4', 'Dedicated AI chatbot for farmers'),
             ].map((feature) => (
               <div key={feature} className="flex items-center gap-3 text-emerald-100">
                 <div className="w-2 h-2 rounded-full bg-emerald-300 shrink-0" />
@@ -120,7 +122,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
         </div>
 
         <p className="relative z-10 text-emerald-200 text-sm">
-          © 2026 AgroCare. Serving farmers across India.
+          {t('auth.register.footer', '© 2026 AgroCare. Serving farmers across India.')}
         </p>
       </div>
 
@@ -141,8 +143,8 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
           </div>
 
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-slate-800 mb-2">Create your account</h1>
-            <p className="text-slate-500">Join thousands of farmers and buyers on AgroCare</p>
+            <h1 className="text-3xl font-bold text-slate-800 mb-2">{t('auth.register.title', 'Create your account')}</h1>
+            <p className="text-slate-500">{t('auth.register.subtitle', 'Join thousands of farmers and buyers on AgroCare')}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
@@ -160,7 +162,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
             {/* Role selector */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                I am a <span className="text-red-500">*</span>
+                {t('auth.register.iAm', 'I am a')} <span className="text-red-500">*</span>
               </label>
               <div className="grid grid-cols-2 gap-3">
                 {roleOptions.map((opt) => (
@@ -193,7 +195,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
             {/* Full Name */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Full name <span className="text-red-500">*</span>
+                {t('auth.register.fullName', 'Full name')} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -204,7 +206,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
                   required
                   value={form.name}
                   onChange={set('name')}
-                  placeholder="Rajesh Kumar"
+                  placeholder={t('auth.register.fullNamePlaceholder', 'Rajesh Kumar')}
                   className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition"
                 />
               </div>
@@ -213,7 +215,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
             {/* Email */}
             <div>
               <label htmlFor="reg-email" className="block text-sm font-medium text-slate-700 mb-1.5">
-                Email address <span className="text-red-500">*</span>
+                {t('auth.email', 'Email address')} <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -234,7 +236,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="reg-password" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Password <span className="text-red-500">*</span>
+                    {t('auth.password', 'Password')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -245,14 +247,14 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
                     required
                     value={form.password}
                     onChange={set('password')}
-                    placeholder="Min. 8 chars"
+                    placeholder={t('auth.register.passwordPlaceholder', 'Min. 8 chars')}
                     className="w-full pl-10 pr-9 py-3 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -260,7 +262,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
               </div>
               <div>
                 <label htmlFor="confirm-password" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Confirm <span className="text-red-500">*</span>
+                  {t('auth.register.confirm', 'Confirm')} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -271,14 +273,14 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
                     required
                     value={form.confirmPassword}
                     onChange={set('confirmPassword')}
-                    placeholder="Repeat password"
+                    placeholder={t('auth.register.confirmPlaceholder', 'Repeat password')}
                     className="w-full pl-10 pr-9 py-3 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition text-sm"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirm((v) => !v)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition"
-                    aria-label={showConfirm ? 'Hide password' : 'Show password'}
+                    aria-label={showConfirm ? t('auth.hidePassword', 'Hide password') : t('auth.showPassword', 'Show password')}
                   >
                     {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -290,7 +292,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Phone <span className="text-slate-400 font-normal">(optional)</span>
+                  {t('auth.register.phone', 'Phone')} <span className="text-slate-400 font-normal">({t('common.optional', 'optional')})</span>
                 </label>
                 <div className="relative">
                   <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -307,7 +309,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
               </div>
               <div>
                 <label htmlFor="location" className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Location <span className="text-slate-400 font-normal">(optional)</span>
+                  {t('auth.register.location', 'Location')} <span className="text-slate-400 font-normal">({t('common.optional', 'optional')})</span>
                 </label>
                 <div className="relative">
                   <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -330,17 +332,17 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
               className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2"
             >
               {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-              {isSubmitting ? 'Creating account…' : 'Create account'}
+              {isSubmitting ? t('auth.register.creating', 'Creating account…') : t('auth.register.create', 'Create account')}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-slate-500">
-            Already have an account?{' '}
+            {t('auth.register.haveAccount', 'Already have an account?')}{' '}
             <button
               onClick={onSwitchToLogin}
               className="text-emerald-600 font-semibold hover:underline"
             >
-              Sign in
+              {t('auth.login.signIn', 'Sign in')}
             </button>
           </p>
         </motion.div>

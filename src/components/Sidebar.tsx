@@ -9,6 +9,7 @@ import {
   Tractor
 } from 'lucide-react';
 import { Screen } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface SidebarProps {
   activeScreen: Screen;
@@ -18,11 +19,13 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ activeScreen, setActiveScreen, isExpanded, onToggleExpand }: SidebarProps) {
+  const { t } = useLanguage();
+
   const navItems = [
-    { id: 'dashboard' as Screen, label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'mandi-prices' as Screen, label: 'Mandi Prices', icon: TrendingUp },
-    { id: 'disease-detection' as Screen, label: 'Disease Detection', icon: Search },
-    { id: 'education' as Screen, label: 'Education', icon: BookOpen },
+    { id: 'dashboard' as Screen, label: t('sidebar.dashboard', 'Dashboard'), icon: LayoutDashboard },
+    { id: 'mandi-prices' as Screen, label: t('sidebar.mandiPrices', 'Mandi Prices'), icon: TrendingUp },
+    { id: 'disease-detection' as Screen, label: t('sidebar.diseaseDetection', 'Disease Detection'), icon: Search },
+    { id: 'education' as Screen, label: t('sidebar.education', 'Education'), icon: BookOpen },
   ];
 
   return (
@@ -33,8 +36,8 @@ export default function Sidebar({ activeScreen, setActiveScreen, isExpanded, onT
     >
       <button
         onClick={onToggleExpand}
-        title={isExpanded ? 'Collapse menu' : 'Expand menu'}
-        aria-label={isExpanded ? 'Collapse menu' : 'Expand menu'}
+        title={isExpanded ? t('sidebar.collapse', 'Collapse menu') : t('sidebar.expand', 'Expand menu')}
+        aria-label={isExpanded ? t('sidebar.collapse', 'Collapse menu') : t('sidebar.expand', 'Expand menu')}
         className="absolute right-0 top-6 z-30 flex h-8 w-8 translate-x-1/2 items-center justify-center rounded-full border-2 border-white bg-emerald-600 text-white shadow-md transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
       >
         {isExpanded ? <ChevronLeft size={16} strokeWidth={2.5} /> : <ChevronRight size={16} strokeWidth={2.5} />}
@@ -46,7 +49,7 @@ export default function Sidebar({ activeScreen, setActiveScreen, isExpanded, onT
         </div>
         <div className={isExpanded ? 'block' : 'hidden'}>
           <h1 className="text-emerald-700 text-xl font-bold tracking-tight">AgroCare</h1>
-          <p className="text-xs text-slate-500 font-medium">Farmer's Portal</p>
+          <p className="text-xs text-slate-500 font-medium">{t('sidebar.portal', "Farmer's Portal")}</p>
         </div>
       </div>
 

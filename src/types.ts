@@ -1,4 +1,5 @@
 export type Screen = 'dashboard' | 'mandi-prices' | 'disease-detection' | 'education' | 'chatbot';
+export type SupportedLanguage = 'en' | 'hi' | 'ta' | 'te' | 'kn' | 'ml' | 'or';
 
 export interface MandiPrice {
   crop: string;
