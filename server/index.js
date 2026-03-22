@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.js";
 import mandiRoutes from "./routes/mandi.js";
 import tipsRoutes from "./routes/tips.js";
 import aiRoutes from "./routes/ai.js";
+import weatherRoutes from "./routes/weather.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -50,6 +51,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/mandi", mandiRoutes);
 app.use("/api/tips", tipsRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/weather", weatherRoutes);
 
 // Start listening immediately so the app is reachable even if DB is still connecting.
 app.listen(PORT, () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Screen } from '../types';
 import { 
   CloudRain, 
@@ -11,7 +11,9 @@ import {
   Wallet, 
   CheckCircle2,
   ChevronRight,
-  Search
+  Search,
+  AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -27,6 +29,29 @@ interface DailyTipState {
   tip: string;
   source: TipSource;
   fetchedAt: string;
+}
+
+interface WeatherForecastDay {
+  date: string;
+  high: number;
+  low: number;
+  humidity: number;
+  cond: 'Sunny' | 'Partly Cloudy' | 'Clouds';
+}
+
+interface WeatherPayload {
+  location: {
+    city: string;
+    country: string;
+    lat: number;
+    lon: number;
+  };
+  current: {
+    tempC: number;
+    humidity: number;
+    cond: 'Sunny' | 'Partly Cloudy' | 'Clouds';
+  };
+  forecast: WeatherForecastDay[];
 }
 
 const getDefaultTipState = (): DailyTipState => ({
@@ -76,34 +101,111 @@ const persistTip = (language: string, tipState: DailyTipState) => {
 export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Screen) => void }) {
   const { language, t } = useLanguage();
   const [showForecast, setShowForecast] = useState(false);
-  const [forecast, setForecast] = useState<Array<any>>([]);
+  const [weather, setWeather] = useState<WeatherPayload | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherError, setWeatherError] = useState('');
+  const [weatherRefreshCounter, setWeatherRefreshCounter] = useState(0);
   const [dailyTip, setDailyTip] = useState<DailyTipState>(() => readStoredTip(language) || getDefaultTipState());
 
-  // generate a deterministic 7-day forecast (frontend-only)
-  useEffect(() => {
-    const today = new Date();
-    const baseTemp = 28; // matches hero default
-    // simple seeded generator for variance
-    const seed = baseTemp + today.getDate();
-    const rnd = (n: number) => Math.abs(Math.sin(seed + n) * 100) % 10;
+  const getConditionLabel = (condition: WeatherForecastDay['cond']) => {
+    if (condition === 'Clouds') {
+      return t('dashboard.weather.clouds', 'Clouds');
+    }
+    if (condition === 'Partly Cloudy') {
+      return t('dashboard.weather.partlyCloudy', 'Partly Cloudy');
+    }
+    return t('dashboard.weather.sunny', 'Sunny');
+  };
 
-    const days = Array.from({ length: 7 }).map((_, i) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      const high = Math.round(baseTemp + rnd(i) + (i % 2 === 0 ? 1 : -1) * (i * 0.3));
-      const low = Math.round(high - (2 + (rnd(i + 3) % 4)));
-      const humidity = Math.round(40 + rnd(i + 1) * 5 + (i % 3) * 2);
-      const cond = humidity > 60 ? 'Clouds' : humidity > 50 ? 'Partly Cloudy' : 'Sunny';
-      return {
-        date: date.toISOString(),
-        high,
-        low,
-        humidity,
-        cond,
-      };
-    });
-    setForecast(days);
-  }, []);
+  const fetchLiveWeather = useCallback(async (signal?: AbortSignal) => {
+    setWeatherLoading(true);
+    setWeatherError('');
+
+    if (!navigator.geolocation) {
+      setWeather(null);
+      setShowForecast(false);
+      setWeatherError(t('dashboard.weather.error.unsupported', 'Geolocation is not supported in this browser.'));
+      setWeatherLoading(false);
+      return;
+    }
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 10000,
+          maximumAge: 10 * 60 * 1000,
+        });
+      });
+
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+
+      const response = await fetch(
+        `/api/weather/current?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}&language=${encodeURIComponent(language)}`,
+        { signal }
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to fetch live weather.');
+      }
+
+      setWeather({
+        location: {
+          city: typeof data?.location?.city === 'string' ? data.location.city : '',
+          country: typeof data?.location?.country === 'string' ? data.location.country : '',
+          lat: Number(data?.location?.lat ?? lat),
+          lon: Number(data?.location?.lon ?? lon),
+        },
+        current: {
+          tempC: Number(data?.current?.tempC ?? 0),
+          humidity: Number(data?.current?.humidity ?? 0),
+          cond: data?.current?.cond === 'Clouds' || data?.current?.cond === 'Partly Cloudy' ? data.current.cond : 'Sunny',
+        },
+        forecast: Array.isArray(data?.forecast)
+          ? data.forecast.map((entry: any) => ({
+              date: String(entry?.date || new Date().toISOString()),
+              high: Number(entry?.high ?? 0),
+              low: Number(entry?.low ?? 0),
+              humidity: Number(entry?.humidity ?? 0),
+              cond: entry?.cond === 'Clouds' || entry?.cond === 'Partly Cloudy' ? entry.cond : 'Sunny',
+            }))
+          : [],
+      });
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        (error as GeolocationPositionError).code === 1
+      ) {
+        setWeatherError(
+          t(
+            'dashboard.weather.error.permission',
+            'Location permission is required to load live weather. Please allow location access and try again.'
+          )
+        );
+      } else {
+        setWeatherError(t('dashboard.weather.error.fetch', 'Unable to load live weather right now. Please try again.'));
+      }
+
+      setShowForecast(false);
+      setWeather(null);
+    } finally {
+      setWeatherLoading(false);
+    }
+  }, [language, t]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchLiveWeather(controller.signal);
+    return () => controller.abort();
+  }, [fetchLiveWeather, weatherRefreshCounter]);
 
   useEffect(() => {
     let mounted = true;
@@ -157,7 +259,8 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
     };
   }, [language]);
 
-  const todayHumidity = forecast.length ? forecast[0].humidity : 45;
+  const todayHumidity = weather?.current?.humidity ?? 0;
+  const hasForecast = Boolean(weather?.forecast?.length);
 
   return (
     <div className="p-4 md:p-8 space-y-8 overflow-y-auto">
@@ -170,24 +273,54 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
           <div className="z-10">
-            <h2 className="text-4xl font-black mb-2">28°C {t('dashboard.weather.sunny', 'Sunny')}</h2>
-            <p className="text-white/80 font-medium">{t('dashboard.weather.subtitle', 'Perfect weather for wheat harvesting in your region today.')}</p>
+            {weatherLoading ? (
+              <div className="flex items-center gap-3">
+                <Loader2 size={28} className="animate-spin" />
+                <p className="text-lg font-semibold">{t('dashboard.weather.loading', 'Loading live weather...')}</p>
+              </div>
+            ) : weatherError ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 text-red-100">
+                  <AlertCircle size={20} className="mt-0.5 shrink-0" />
+                  <p className="font-medium">{weatherError}</p>
+                </div>
+                <button
+                  onClick={() => setWeatherRefreshCounter((prev) => prev + 1)}
+                  className="bg-white text-emerald-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors"
+                >
+                  {t('dashboard.weather.retry', 'Retry weather')}
+                </button>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-4xl font-black mb-2">
+                  {Math.round(weather?.current?.tempC || 0)}°C {getConditionLabel(weather?.current?.cond || 'Sunny')}
+                </h2>
+                <p className="text-white/80 font-medium">{t('dashboard.weather.liveSubtitle', 'Live weather for your current location.')}</p>
+                {weather?.location?.city ? (
+                  <p className="text-white/80 text-sm mt-1">
+                    {weather.location.city}{weather.location.country ? `, ${weather.location.country}` : ''}
+                  </p>
+                ) : null}
+              </>
+            )}
           </div>
           <div className="z-10 mt-6 flex items-center gap-4">
             <button
               onClick={() => setShowForecast((s) => !s)}
+              disabled={!hasForecast || Boolean(weatherError) || weatherLoading}
               className="bg-white text-emerald-700 px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors"
             >
               {showForecast ? t('dashboard.forecast.hide', 'Hide 7-Day Forecast') : t('dashboard.forecast.view', 'View 7-Day Forecast')}
             </button>
             <div className="flex items-center gap-2 text-sm text-white/90">
               <CloudRain size={18} />
-              <span>{t('dashboard.humidity', 'Humidity')}: {todayHumidity}%</span>
+              <span>{t('dashboard.humidity', 'Humidity')}: {weatherError || weatherLoading ? '--' : todayHumidity}%</span>
             </div>
           </div>
         </motion.div>
 
-        {showForecast && (
+        {showForecast && hasForecast && !weatherError && !weatherLoading && (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -197,20 +330,14 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-emerald-50">
               <h4 className="font-bold mb-3">{t('dashboard.forecast.title', '7-Day Forecast')}</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                {forecast.map((d, idx) => {
+                {weather?.forecast?.map((d, idx) => {
                   const date = new Date(d.date);
                   const day = date.toLocaleDateString(undefined, { weekday: 'short' });
-                  const conditionText =
-                    d.cond === 'Clouds'
-                      ? t('dashboard.weather.clouds', 'Clouds')
-                      : d.cond === 'Partly Cloudy'
-                        ? t('dashboard.weather.partlyCloudy', 'Partly Cloudy')
-                        : t('dashboard.weather.sunny', 'Sunny');
                   return (
                     <div key={idx} className="p-3 rounded-lg bg-emerald-50 text-emerald-700 text-center">
                       <div className="text-xs font-semibold">{day}</div>
                       <div className="text-sm font-bold mt-1">{d.high}° / {d.low}°</div>
-                      <div className="text-xs text-slate-600 mt-1">{conditionText}</div>
+                      <div className="text-xs text-slate-600 mt-1">{getConditionLabel(d.cond)}</div>
                       <div className="text-xs mt-2">{t('dashboard.humidity', 'Humidity')}: <span className="font-semibold">{d.humidity}%</span></div>
                     </div>
                   );

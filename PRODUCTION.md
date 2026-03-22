@@ -11,7 +11,7 @@
 - [API Key Exposure (Critical)](#api-key-exposure-critical)
 - [Authentication Status](#authentication-status)
 - [Environment Variables](#environment-variables)
-- [Static Data Limitations](#static-data-limitations)
+- [Data Status](#data-status)
 - [Security Checklist](#security-checklist)
 - [Deployment Options](#deployment-options)
 
@@ -57,7 +57,7 @@ Vite inlines the `GEMINI_API_KEY` into the built JavaScript bundle via the `defi
 
 ```ts
 define: {
-  'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+  'process.env.GEMINI_API_KEY': JSON.stringify(process.env.GEMINI_API_KEY),
 }
 ```
 
@@ -67,6 +67,8 @@ define: {
 - `dist/` is gitignored, so this is **not a git leak concern**.
 - However, if you deploy the built app publicly, **anyone can extract your API key** by inspecting the JavaScript source in their browser's DevTools.
 - A leaked API key means anyone can make Gemini API calls billed to your account.
+
+Today this primarily affects client-side Gemini usage in `src/components/DiseaseDetection.tsx`.
 
 ### Why It's Fine for Local Development
 
@@ -87,9 +89,12 @@ Authentication is now implemented with:
 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
 - User roles: `farmer` and `buyer`
 - Password hashing: `bcryptjs`
 - Session token: JWT (7-day expiry)
+- In-memory rate limiting on password reset endpoints
 
 Current frontend session storage uses browser `localStorage` for JWT + user profile.
 
@@ -110,7 +115,7 @@ To deploy AgroCare securely, keep API secrets server-side and expand the existin
 
 ```
 Browser (React app)
-    ↓ fetch("/api/chat", { message })
+  ↓ fetch("/api/ai/chat", { message })
 Backend (Express / Node.js)
     ↓ GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
 Google Gemini API
@@ -118,16 +123,15 @@ Google Gemini API
 
 **Steps:**
 
-1. Add backend routes for Gemini use cases (`/api/chat`, `/api/disease-detect`).
-2. Move `GoogleGenAI` calls from `Chatbot.tsx` and `DiseaseDetection.tsx` into those routes.
+1. Keep backend routes for AI use cases (`/api/ai/chat`, `/api/tips/daily`) as the default path.
+2. Move `GoogleGenAI` calls from `DiseaseDetection.tsx` into a backend endpoint (for example `/api/ai/disease-detect`).
 3. Store `GEMINI_API_KEY` in backend env only.
 4. Keep frontend calls limited to your own `/api/*` endpoints.
-5. Add auth + rate limiting + validation on these endpoints.
+5. Add auth + rate limiting + validation on AI endpoints.
 
-**Components to refactor:**
+**Still pending to fully remove frontend key exposure:**
 
-- `src/components/Chatbot.tsx` (line 48) — move `GoogleGenAI` call to backend
-- `src/components/DiseaseDetection.tsx` (line 57) — move `GoogleGenAI` call to backend
+- `src/components/DiseaseDetection.tsx` — move `GoogleGenAI` call to backend
 
 ### Option 2: Use Google Cloud API Gateway
 
@@ -153,11 +157,13 @@ This avoids maintaining a full backend server while keeping the key server-side.
 
 | Variable         | Location          | Behavior                                 |
 | ---------------- | ----------------- | ---------------------------------------- |
-| `GEMINI_API_KEY` | `.env/.env.local` | Injected at build time via Vite `define` |
-| `MONGODB_URI`    | `.env/.env.local` | Backend MongoDB connection string        |
-| `JWT_SECRET`     | `.env/.env.local` | Backend JWT signing secret               |
-| `CORS_ORIGIN`    | `.env/.env.local` | Allowed origin for Express API           |
-| `PORT`           | `.env/.env.local` | Express server port (default `4000`)     |
+| `GEMINI_API_KEY` | `.env`            | Injected at build time via Vite `define` |
+| `MONGODB_URI`    | `.env`            | Backend MongoDB connection string        |
+| `JWT_SECRET`     | `.env`            | Backend JWT signing secret               |
+| `CORS_ORIGIN`    | `.env`            | Allowed origin for Express API           |
+| `PORT`           | `.env`            | Express server port (default `4000`)     |
+| `OPENWEATHER_API_KEY` | `.env`       | Live weather provider key for `/api/weather/current` |
+| `WEATHER_CACHE_MINUTES` | `.env`     | Weather cache TTL in backend memory      |
 
 ### Production (Recommended)
 
@@ -167,19 +173,21 @@ This avoids maintaining a full backend server while keeping the key server-side.
 | `MONGODB_URI`    | Server env only | Used by backend for user/auth and application data   |
 | `JWT_SECRET`     | Server env only | Used by backend auth token issuance/verification     |
 | `CORS_ORIGIN`    | Server env only | Lock to deployed frontend domain                     |
+| `OPENWEATHER_API_KEY` | Server env only | Used by backend weather route only                 |
 
 **Never hardcode API keys in source code or commit them to version control.**
 
 ---
 
-## Static Data Limitations
+## Data Status
 
-The following data is hardcoded and will not update dynamically in production:
+Current state of key app data sources:
 
 | Feature      | Current State                     | Production Recommendation                                      |
 | ------------ | --------------------------------- | -------------------------------------------------------------- |
-| Mandi Prices | 4 static crops with fixed prices  | Integrate [Agmarknet API](https://agmarknet.gov.in) or similar |
-| Weather      | Hardcoded "28°C Sunny"            | Integrate OpenWeatherMap or Weather API                        |
+| Mandi Prices | Live via Agmarknet API proxy      | Add persistence, retries, and observability for API outages    |
+| Daily Tip    | Live via `/api/tips/daily` with fallback | Persist history/analytics if long-term reporting is needed |
+| Weather      | Live via `/api/weather/current` (OpenWeatherMap + geolocation) | Add usage monitoring and quota alerts for provider limits |
 | Articles     | Static content in component files | Use a CMS or database                                          |
 | Gov Schemes  | 4 static scheme cards             | Fetch from government data portals                             |
 | Images       | Unsplash CDN URLs (hardcoded)     | Host images locally or use your own CDN                        |
@@ -194,6 +202,7 @@ The following data is hardcoded and will not update dynamically in production:
 Before deploying to production, verify the following:
 
 - [ ] **API key is NOT in client-side code** — moved to a backend proxy
+- [ ] **Disease detection AI is server-side** (currently still client-side Gemini call)
 - [ ] **Rate limiting** is implemented on backend API routes
 - [x] **Authentication baseline** is implemented (register/login + JWT)
 - [ ] **JWT stored in HTTP-only cookies** (recommended upgrade from localStorage)
@@ -249,4 +258,4 @@ npm uninstall better-sqlite3
 
 ---
 
-_Last updated: 2026-03-16_
+_Last updated: 2026-03-22_
