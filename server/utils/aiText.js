@@ -1,4 +1,58 @@
 const DEFAULT_PROVIDER = "auto";
+const DEFAULT_COOLDOWN_MS = 60 * 1000;
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
+const RATE_LIMIT_COOLDOWN_THRESHOLD = 3;
+
+const providerState = {
+  gemini: {
+    rateLimitHits: [],
+    cooldownUntil: 0,
+  },
+  openai: {
+    rateLimitHits: [],
+    cooldownUntil: 0,
+  },
+};
+
+const parseRetryAfterMs = (headerValue) => {
+  if (!headerValue) return 0;
+  const numericSeconds = Number(headerValue);
+  if (Number.isFinite(numericSeconds) && numericSeconds > 0) {
+    return Math.floor(numericSeconds * 1000);
+  }
+
+  const dateMs = Date.parse(headerValue);
+  if (!Number.isNaN(dateMs)) {
+    return Math.max(0, dateMs - Date.now());
+  }
+
+  return 0;
+};
+
+const getProviderState = (provider) => providerState[provider] || providerState.gemini;
+
+const registerRateLimitHit = (provider, retryAfterMs = 0) => {
+  const state = getProviderState(provider);
+  const now = Date.now();
+  state.rateLimitHits = state.rateLimitHits.filter((ts) => now - ts < RATE_LIMIT_WINDOW_MS);
+  state.rateLimitHits.push(now);
+
+  const hitsExceeded = state.rateLimitHits.length >= RATE_LIMIT_COOLDOWN_THRESHOLD;
+  if (hitsExceeded || retryAfterMs > 0) {
+    const cooldownMs = Math.max(retryAfterMs, DEFAULT_COOLDOWN_MS);
+    state.cooldownUntil = Math.max(state.cooldownUntil, now + cooldownMs);
+  }
+};
+
+const isProviderCoolingDown = (provider) => {
+  const state = getProviderState(provider);
+  return Date.now() < state.cooldownUntil;
+};
+
+const getRemainingCooldownMs = (provider) => {
+  const state = getProviderState(provider);
+  return Math.max(0, state.cooldownUntil - Date.now());
+};
 
 const normalizeProvider = (value) => {
   const candidate = String(value || DEFAULT_PROVIDER).toLowerCase().trim();
@@ -8,8 +62,33 @@ const normalizeProvider = (value) => {
   return DEFAULT_PROVIDER;
 };
 
+const validateOpenAIKey = (rawKey) => {
+  const key = String(rawKey || "");
+  const trimmed = key.trim();
+
+  if (!trimmed) {
+    return { valid: false, reason: "OpenAI API key is missing" };
+  }
+
+  if (trimmed.includes("\n") || trimmed.includes("\r") || /\s/.test(trimmed)) {
+    return {
+      valid: false,
+      reason: "OpenAI API key appears malformed (contains whitespace/newline).",
+    };
+  }
+
+  if (!trimmed.startsWith("sk-")) {
+    return {
+      valid: false,
+      reason: "OpenAI API key appears malformed (expected to start with sk-).",
+    };
+  }
+
+  return { valid: true, key: trimmed };
+};
+
 const hasGeminiKey = () => Boolean(process.env.GEMINI_API_KEY);
-const hasOpenAIKey = () => Boolean(process.env.OPENAI_API_KEY);
+const hasOpenAIKey = () => validateOpenAIKey(process.env.OPENAI_API_KEY).valid;
 
 const getProviderOrder = () => {
   const preferred = normalizeProvider(process.env.AI_PROVIDER);
@@ -34,6 +113,11 @@ const getProviderOrder = () => {
 };
 
 const callGemini = async ({ prompt, systemInstruction, temperature = 0.7, maxOutputTokens = 256 }) => {
+  if (isProviderCoolingDown("gemini")) {
+    const seconds = Math.ceil(getRemainingCooldownMs("gemini") / 1000);
+    throw new Error(`Gemini temporarily cooling down after rate limiting (${seconds}s remaining)`);
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("Gemini API key is missing");
@@ -61,7 +145,26 @@ const callGemini = async ({ prompt, systemInstruction, temperature = 0.7, maxOut
   });
 
   if (!response.ok) {
-    throw new Error(`Gemini request failed with status ${response.status}`);
+    const retryAfterMs = parseRetryAfterMs(response.headers.get("retry-after"));
+    let detail = "";
+
+    try {
+      const payload = await response.json();
+      detail =
+        payload?.error?.message ||
+        payload?.message ||
+        "";
+    } catch {
+      // ignore json parse failures
+    }
+
+    if (response.status === 429) {
+      registerRateLimitHit("gemini", retryAfterMs);
+    }
+
+    throw new Error(
+      `Gemini request failed with status ${response.status}${detail ? `: ${detail}` : ""}`
+    );
   }
 
   const data = await response.json();
@@ -78,9 +181,14 @@ const callGemini = async ({ prompt, systemInstruction, temperature = 0.7, maxOut
 };
 
 const callOpenAI = async ({ prompt, systemInstruction, temperature = 0.7, maxOutputTokens = 256 }) => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OpenAI API key is missing");
+  if (isProviderCoolingDown("openai")) {
+    const seconds = Math.ceil(getRemainingCooldownMs("openai") / 1000);
+    throw new Error(`OpenAI temporarily cooling down after rate limiting (${seconds}s remaining)`);
+  }
+
+  const keyValidation = validateOpenAIKey(process.env.OPENAI_API_KEY);
+  if (!keyValidation.valid) {
+    throw new Error(keyValidation.reason || "OpenAI API key is invalid");
   }
 
   const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
@@ -95,7 +203,7 @@ const callOpenAI = async ({ prompt, systemInstruction, temperature = 0.7, maxOut
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${keyValidation.key}`,
     },
     body: JSON.stringify({
       model,
@@ -106,7 +214,26 @@ const callOpenAI = async ({ prompt, systemInstruction, temperature = 0.7, maxOut
   });
 
   if (!response.ok) {
-    throw new Error(`OpenAI request failed with status ${response.status}`);
+    const retryAfterMs = parseRetryAfterMs(response.headers.get("retry-after"));
+    let detail = "";
+
+    try {
+      const payload = await response.json();
+      detail =
+        payload?.error?.message ||
+        payload?.message ||
+        "";
+    } catch {
+      // ignore json parse failures
+    }
+
+    if (response.status === 429) {
+      registerRateLimitHit("openai", retryAfterMs);
+    }
+
+    throw new Error(
+      `OpenAI request failed with status ${response.status}${detail ? `: ${detail}` : ""}`
+    );
   }
 
   const data = await response.json();

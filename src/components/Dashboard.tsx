@@ -265,11 +265,12 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
   return (
     <div className="p-4 md:p-8 space-y-8 overflow-y-auto">
       {/* Hero Section */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="md:col-span-2 space-y-6">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-2 relative overflow-hidden rounded-2xl bg-emerald-600 p-8 text-white flex flex-col justify-between min-h-[220px]"
+          className="relative overflow-hidden rounded-2xl bg-emerald-600 p-8 text-white flex flex-col justify-between min-h-[220px]"
         >
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl"></div>
           <div className="z-10">
@@ -325,7 +326,7 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25 }}
-            className="lg:col-span-3"
+            className=""
           >
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-emerald-50">
               <h4 className="font-bold mb-3">{t('dashboard.forecast.title', '7-Day Forecast')}</h4>
@@ -346,12 +347,13 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
             </div>
           </motion.div>
         )}
+        </div>
 
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-emerald-50 rounded-2xl p-6 border border-emerald-100 flex flex-col justify-center"
+          className="md:col-span-1 bg-emerald-50 rounded-2xl p-6 border border-emerald-100 flex flex-col justify-center"
         >
           <div className="flex items-center gap-3 mb-3">
             <Lightbulb className="text-emerald-600" size={20} />
