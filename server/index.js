@@ -8,6 +8,9 @@ import mandiRoutes from "./routes/mandi.js";
 import tipsRoutes from "./routes/tips.js";
 import aiRoutes from "./routes/ai.js";
 import weatherRoutes from "./routes/weather.js";
+import articleRoutes from "./routes/articles.js";
+import bookmarkRoutes from "./routes/bookmarks.js";
+import { bootstrapAdmin } from "./services/bootstrapAdmin.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -34,8 +37,7 @@ app.use(
 );
 
 app.use(express.json({ limit: "10kb" }));
-
-// Auth routes removed by request. If you need auth later, restore routes/auth.js and re-enable mounting here.
+app.use("/uploads", express.static(resolve(__dirname, "./uploads")));
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -52,6 +54,8 @@ app.use("/api/mandi", mandiRoutes);
 app.use("/api/tips", tipsRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/weather", weatherRoutes);
+app.use("/api/articles", articleRoutes);
+app.use("/api/bookmarks", bookmarkRoutes);
 
 // Start listening immediately so the app is reachable even if DB is still connecting.
 app.listen(PORT, () => {
@@ -59,13 +63,20 @@ app.listen(PORT, () => {
   console.log("Attempting MongoDB connection in background...");
 });
 
-// Connect DB in background. If connection fails we log recommendations but keep server alive.
-connectDB().catch((err) => {
-  console.error(
-    "Background MongoDB connection failed:",
-    err && err.message ? err.message : err,
-  );
-  console.error(
-    "If you are using Atlas, ensure MONGODB_URI is set in .env or exported in your shell and your IP is whitelisted.",
-  );
-});
+connectDB()
+  .then(async () => {
+    try {
+      await bootstrapAdmin();
+    } catch (error) {
+      console.error("Admin bootstrap failed:", error?.message || error);
+    }
+  })
+  .catch((err) => {
+    console.error(
+      "Background MongoDB connection failed:",
+      err && err.message ? err.message : err,
+    );
+    console.error(
+      "If you are using Atlas, ensure MONGODB_URI is set in .env or exported in your shell and your IP is whitelisted.",
+    );
+  });

@@ -4,12 +4,14 @@ import {
   TrendingUp, 
   Search, 
   BookOpen, 
+  PenSquare,
   ChevronLeft,
   ChevronRight,
   Tractor
 } from 'lucide-react';
 import { Screen } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   activeScreen: Screen;
@@ -20,12 +22,16 @@ interface SidebarProps {
 
 export default function Sidebar({ activeScreen, setActiveScreen, isExpanded, onToggleExpand }: SidebarProps) {
   const { t } = useLanguage();
+  const { user } = useAuth();
 
   const navItems = [
     { id: 'dashboard' as Screen, label: t('sidebar.dashboard', 'Dashboard'), icon: LayoutDashboard },
     { id: 'mandi-prices' as Screen, label: t('sidebar.mandiPrices', 'Mandi Prices'), icon: TrendingUp },
     { id: 'disease-detection' as Screen, label: t('sidebar.diseaseDetection', 'Disease Detection'), icon: Search },
     { id: 'education' as Screen, label: t('sidebar.education', 'Education'), icon: BookOpen },
+    ...(user?.role === 'admin'
+      ? [{ id: 'creator-studio' as Screen, label: t('sidebar.creatorStudio', 'Creator Studio'), icon: PenSquare }]
+      : []),
   ];
 
   return (

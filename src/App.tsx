@@ -7,6 +7,8 @@ import Dashboard from './components/Dashboard';
 import MandiPrices from './components/MandiPrices';
 import DiseaseDetection from './components/DiseaseDetection';
 import KnowledgeHub from './components/KnowledgeHub';
+import CreatorStudio from './components/CreatorStudio';
+import ArticleDetail from './components/ArticleDetail';
 import Chatbot from './components/Chatbot';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
@@ -22,6 +24,7 @@ function AppShell() {
   const [authView, setAuthView] = useState<'login' | 'register' | 'forgot-password' | 'reset-password'>('login');
   const [resetToken, setResetToken] = useState('');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [selectedArticleSlug, setSelectedArticleSlug] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -95,11 +98,23 @@ function AppShell() {
       case 'disease-detection':
         return <DiseaseDetection />;
       case 'education':
-        return <KnowledgeHub />;
+        return selectedArticleSlug ? (
+          <ArticleDetail slug={selectedArticleSlug} onBack={() => setSelectedArticleSlug(null)} />
+        ) : (
+          <KnowledgeHub onOpenArticle={(slug) => setSelectedArticleSlug(slug)} />
+        );
+      case 'creator-studio':
+        return user.role === 'admin' ? <CreatorStudio /> : <Dashboard setActiveScreen={setActiveScreen} />;
       default:
         return <Dashboard setActiveScreen={setActiveScreen} />;
     }
   };
+
+  useEffect(() => {
+    if (activeScreen !== 'education' && selectedArticleSlug) {
+      setSelectedArticleSlug(null);
+    }
+  }, [activeScreen, selectedArticleSlug]);
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">

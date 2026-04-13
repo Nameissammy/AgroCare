@@ -15,8 +15,10 @@ import {
   ShoppingBag,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { UserRole } from '../../types';
+import { RegisterData } from '../../types';
 import { useLanguage } from '../../contexts/LanguageContext';
+
+type RegisterRole = RegisterData['role'];
 
 interface RegisterProps {
   onSwitchToLogin: () => void;
@@ -31,7 +33,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
     email: '',
     password: '',
     confirmPassword: '',
-    role: '' as UserRole | '',
+    role: '' as RegisterRole | '',
     phone: '',
     location: '',
   });
@@ -68,7 +70,7 @@ export default function Register({ onSwitchToLogin }: RegisterProps) {
     }
   };
 
-  const roleOptions: { value: UserRole; label: string; icon: React.ReactNode; desc: string }[] = [
+  const roleOptions: { value: RegisterRole; label: string; icon: React.ReactNode; desc: string }[] = [
     {
       value: 'farmer',
       label: t('role.farmer', 'Farmer'),

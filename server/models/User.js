@@ -31,9 +31,15 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['farmer', 'buyer'],
+      enum: ['farmer', 'buyer', 'admin'],
       required: [true, 'Role is required'],
     },
+    savedArticles: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Article',
+      },
+    ],
     phone: {
       type: String,
       trim: true,
