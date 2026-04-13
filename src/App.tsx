@@ -45,6 +45,12 @@ function AppShell() {
     window.history.replaceState({}, '', nextUrl);
   }, [user]);
 
+  useEffect(() => {
+    if (activeScreen !== 'education' && selectedArticleSlug) {
+      setSelectedArticleSlug(null);
+    }
+  }, [activeScreen, selectedArticleSlug]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -109,12 +115,6 @@ function AppShell() {
         return <Dashboard setActiveScreen={setActiveScreen} />;
     }
   };
-
-  useEffect(() => {
-    if (activeScreen !== 'education' && selectedArticleSlug) {
-      setSelectedArticleSlug(null);
-    }
-  }, [activeScreen, selectedArticleSlug]);
 
   return (
     <div className="flex min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
