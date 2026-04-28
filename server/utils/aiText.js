@@ -54,6 +54,8 @@ const getRemainingCooldownMs = (provider) => {
   return Math.max(0, state.cooldownUntil - Date.now());
 };
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const normalizeProvider = (value) => {
   const candidate = String(value || DEFAULT_PROVIDER).toLowerCase().trim();
   if (candidate === "gemini" || candidate === "openai" || candidate === "auto") {
@@ -123,61 +125,92 @@ const callGemini = async ({ prompt, systemInstruction, temperature = 0.7, maxOut
     throw new Error("Gemini API key is missing");
   }
 
-  const model = process.env.GEMINI_TEXT_MODEL || "gemini-2.0-flash";
+  // Default to a currently available and quota-friendly text model.
+  const model = process.env.GEMINI_TEXT_MODEL || "gemini-2.5-flash";
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   const finalPrompt = systemInstruction
     ? `${systemInstruction}\n\nUser request:\n${prompt}`
     : prompt;
+  const maxAttempts = 3;
+  let lastError = "Gemini request failed.";
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: finalPrompt }] }],
-      generationConfig: {
-        temperature,
-        maxOutputTokens,
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: finalPrompt }] }],
+        generationConfig: {
+          temperature,
+          maxOutputTokens,
+          ...(model.startsWith("gemini-2.5")
+            ? {
+                // Keeps more token budget for user-visible output on 2.5 models.
+                thinkingConfig: { thinkingBudget: 0 },
+              }
+            : {}),
+        },
+      }),
+    });
 
-  if (!response.ok) {
-    const retryAfterMs = parseRetryAfterMs(response.headers.get("retry-after"));
-    let detail = "";
+    if (!response.ok) {
+      const retryAfterMs = parseRetryAfterMs(response.headers.get("retry-after"));
+      let detail = "";
 
-    try {
-      const payload = await response.json();
-      detail =
-        payload?.error?.message ||
-        payload?.message ||
-        "";
-    } catch {
-      // ignore json parse failures
+      try {
+        const payload = await response.json();
+        detail =
+          payload?.error?.message ||
+          payload?.message ||
+          "";
+      } catch {
+        // ignore json parse failures
+      }
+
+      lastError = `Gemini request failed with status ${response.status}${detail ? `: ${detail}` : ""}`;
+
+      if (response.status === 429) {
+        registerRateLimitHit("gemini", retryAfterMs);
+      }
+
+      const shouldRetry = response.status === 503 && attempt < maxAttempts;
+      if (shouldRetry) {
+        await wait(400 * attempt);
+        continue;
+      }
+
+      throw new Error(lastError);
     }
 
-    if (response.status === 429) {
-      registerRateLimitHit("gemini", retryAfterMs);
+    const data = await response.json();
+  const text = (data?.candidates || [])
+    .flatMap((candidate) => candidate?.content?.parts || [])
+    .map((part) => (typeof part?.text === "string" ? part.text.trim() : ""))
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+
+    if (!text) {
+      lastError = "Gemini returned an empty response";
+      const canRetry = attempt < maxAttempts;
+      if (canRetry) {
+        await wait(250 * attempt);
+        continue;
+      }
+      throw new Error(lastError);
     }
 
-    throw new Error(
-      `Gemini request failed with status ${response.status}${detail ? `: ${detail}` : ""}`
-    );
+    return {
+      text: text.trim(),
+      provider: "gemini",
+      model,
+    };
   }
 
-  const data = await response.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text || typeof text !== "string") {
-    throw new Error("Gemini returned an empty response");
-  }
-
-  return {
-    text: text.trim(),
-    provider: "gemini",
-    model,
-  };
+  throw new Error(lastError);
 };
 
 const callOpenAI = async ({ prompt, systemInstruction, temperature = 0.7, maxOutputTokens = 256 }) => {

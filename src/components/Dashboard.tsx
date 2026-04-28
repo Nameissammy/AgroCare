@@ -286,7 +286,7 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
                   <p className="font-medium">{weatherError}</p>
                 </div>
                 <button
-                  onClick={() => setWeatherRefreshCounter((prev) => prev + 1)}
+                  onClick={() => setWeatherRefreshCounter((prev: number) => prev + 1)}
                   className="bg-white text-emerald-700 px-4 py-2 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors"
                 >
                   {t('dashboard.weather.retry', 'Retry weather')}
@@ -308,7 +308,7 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
           </div>
           <div className="z-10 mt-6 flex items-center gap-4">
             <button
-              onClick={() => setShowForecast((s) => !s)}
+              onClick={() => setShowForecast((s: any) => !s)}
               disabled={!hasForecast || Boolean(weatherError) || weatherLoading}
               className="bg-white text-emerald-700 px-6 py-2.5 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors"
             >
@@ -331,7 +331,7 @@ export default function Dashboard({ setActiveScreen }: { setActiveScreen: (s: Sc
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-emerald-50">
               <h4 className="font-bold mb-3">{t('dashboard.forecast.title', '7-Day Forecast')}</h4>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                {weather?.forecast?.map((d, idx) => {
+                {weather?.forecast?.map((d: { date: string | number | Date; high: any; low: any; cond: string; humidity: any; }, idx: any) => {
                   const date = new Date(d.date);
                   const day = date.toLocaleDateString(undefined, { weekday: 'short' });
                   return (

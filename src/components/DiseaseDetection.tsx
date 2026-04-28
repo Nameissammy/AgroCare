@@ -8,7 +8,6 @@ import {
   Leaf, 
   ShieldCheck, 
   Download, 
-  ShoppingBag,
   History,
   Activity,
   Lightbulb,
@@ -17,6 +16,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { GoogleGenAI } from "@google/genai";
+import { jsPDF } from 'jspdf';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface DiagnosisResult {
@@ -97,6 +97,40 @@ export default function DiseaseDetection() {
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const handleDownloadReport = () => {
+    if (!result) return;
+
+    const doc = new jsPDF();
+    const date = new Date().toLocaleDateString();
+    const safeCondition = (result.condition || 'diagnosis').replace(/[^a-z0-9-]/gi, '_').toLowerCase();
+
+    doc.setFontSize(18);
+    doc.text('AgroCare Disease Detection Report', 14, 18);
+    doc.setFontSize(11);
+    doc.text(`Generated: ${date}`, 14, 26);
+
+    let y = 36;
+    const addSection = (label: string, content: string) => {
+      doc.setFont('helvetica', 'bold');
+      doc.text(label, 14, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(content || 'N/A', 182);
+      doc.text(lines, 14, y);
+      y += lines.length * 5 + 4;
+    };
+
+    addSection('Condition', result.condition);
+    addSection('Scientific Name', result.scientificName);
+    addSection('Confidence', `${result.confidence}%`);
+    addSection('Description', result.description);
+    addSection('Chemical Control', result.chemicalControl);
+    addSection('Organic Methods', result.organicMethods);
+    addSection('Preventive Measures', result.preventiveMeasures?.join('\n') || 'N/A');
+
+    doc.save(`agrocare-report-${safeCondition}.pdf`);
   };
 
   return (
@@ -279,11 +313,11 @@ export default function DiseaseDetection() {
                   </div>
                 </div>
                 <div className="mt-8 flex gap-3">
-                  <button className="flex-1 bg-emerald-600 text-white text-xs font-bold py-3 rounded-lg hover:bg-emerald-700 transition-all uppercase tracking-wider flex items-center justify-center gap-2">
+                  <button
+                    onClick={handleDownloadReport}
+                    className="flex-1 bg-emerald-600 text-white text-xs font-bold py-3 rounded-lg hover:bg-emerald-700 transition-all uppercase tracking-wider flex items-center justify-center gap-2"
+                  >
                     <Download size={14} /> {t('disease.downloadReport', 'Download Report')}
-                  </button>
-                  <button className="flex-1 bg-white text-emerald-600 border border-emerald-600 text-xs font-bold py-3 rounded-lg hover:bg-emerald-50 transition-all uppercase tracking-wider flex items-center justify-center gap-2">
-                    <ShoppingBag size={14} /> {t('disease.buySupplies', 'Buy Supplies')}
                   </button>
                 </div>
               </div>
