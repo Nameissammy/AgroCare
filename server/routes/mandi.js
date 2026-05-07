@@ -8,6 +8,140 @@ const DEFAULT_API_KEY = "579b464db66ec23bdd00000125f4f54e93e7d04f6f8f1954";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const mandiCache = new Map();
 
+// Fallback mock data for when Agmarknet API is unavailable
+const FALLBACK_MOCK_DATA = [
+  {
+    state: "Punjab",
+    district: "Ludhiana",
+    market: "Ludhiana Mandi",
+    commodity: "Wheat",
+    variety: "Common",
+    grade: "Fair Average Quality",
+    arrival_date: "15/01/2026",
+    min_price: "2150",
+    max_price: "2280",
+    modal_price: "2200",
+  },
+  {
+    state: "Punjab",
+    district: "Ludhiana",
+    market: "Ludhiana Mandi",
+    commodity: "Rice",
+    variety: "Common",
+    grade: "Common",
+    arrival_date: "15/01/2026",
+    min_price: "2800",
+    max_price: "3050",
+    modal_price: "2950",
+  },
+  {
+    state: "Maharashtra",
+    district: "Nashik",
+    market: "Nashik Mandi",
+    commodity: "Onion",
+    variety: "White",
+    grade: "Good",
+    arrival_date: "14/01/2026",
+    min_price: "1800",
+    max_price: "2100",
+    modal_price: "1950",
+  },
+  {
+    state: "Maharashtra",
+    district: "Nashik",
+    market: "Nashik Mandi",
+    commodity: "Tomato",
+    variety: "Regular",
+    grade: "Good",
+    arrival_date: "14/01/2026",
+    min_price: "800",
+    max_price: "1200",
+    modal_price: "1000",
+  },
+  {
+    state: "Karnataka",
+    district: "Belgaum",
+    market: "Belgaum Mandi",
+    commodity: "Sugarcane",
+    variety: "Common",
+    grade: "Good",
+    arrival_date: "13/01/2026",
+    min_price: "2500",
+    max_price: "2800",
+    modal_price: "2650",
+  },
+  {
+    state: "Tamil Nadu",
+    district: "Madurai",
+    market: "Madurai Mandi",
+    commodity: "Cotton",
+    variety: "Medium Staple",
+    grade: "Good",
+    arrival_date: "12/01/2026",
+    min_price: "5200",
+    max_price: "5800",
+    modal_price: "5500",
+  },
+  {
+    state: "Uttar Pradesh",
+    district: "Meerut",
+    market: "Meerut Mandi",
+    commodity: "Potato",
+    variety: "Common",
+    grade: "Good",
+    arrival_date: "14/01/2026",
+    min_price: "900",
+    max_price: "1300",
+    modal_price: "1100",
+  },
+  {
+    state: "Madhya Pradesh",
+    district: "Indore",
+    market: "Indore Mandi",
+    commodity: "Soyabean",
+    variety: "Yellow",
+    grade: "Good",
+    arrival_date: "12/01/2026",
+    min_price: "4500",
+    max_price: "4950",
+    modal_price: "4700",
+  },
+  {
+    state: "Gujarat",
+    district: "Ahmedabad",
+    market: "Ahmedabad Mandi",
+    commodity: "Groundnut",
+    variety: "Bold",
+    grade: "Good",
+    arrival_date: "11/01/2026",
+    min_price: "5800",
+    max_price: "6500",
+    modal_price: "6100",
+  },
+  {
+    state: "Rajasthan",
+    district: "Jodhpur",
+    market: "Jodhpur Mandi",
+    commodity: "Mustard",
+    variety: "Common",
+    grade: "Good",
+    arrival_date: "10/01/2026",
+    min_price: "5500",
+    max_price: "6200",
+    modal_price: "5850",
+  },
+];
+
+const FALLBACK_TREND = [
+  { date: "2026-01-09", modalPrice: 2150 },
+  { date: "2026-01-10", modalPrice: 2165 },
+  { date: "2026-01-11", modalPrice: 2175 },
+  { date: "2026-01-12", modalPrice: 2185 },
+  { date: "2026-01-13", modalPrice: 2190 },
+  { date: "2026-01-14", modalPrice: 2195 },
+  { date: "2026-01-15", modalPrice: 2200 },
+];
+
 const getCacheKey = ({ state, commodity, search, limit, offset }) =>
   JSON.stringify({ state, commodity, search, limit, offset });
 
@@ -91,7 +225,7 @@ const buildTrend = (records) => {
       modalPrice: Math.round(value.total / value.count),
     }));
 
-  return sorted;
+  return sorted.length > 0 ? sorted : FALLBACK_TREND;
 };
 
 router.get("/prices", async (req, res) => {
@@ -140,18 +274,39 @@ router.get("/prices", async (req, res) => {
     }
 
     const url = `${AGMARKNET_BASE_URL}/${AGMARKNET_RESOURCE_ID}?${params.toString()}`;
-    const response = await fetch(url);
 
-    if (!response.ok) {
-      const body = await response.text();
-      return res.status(502).json({
-        message: "Failed to fetch Agmarknet data",
-        details: body,
-      });
+    let apiResponse = null;
+    let apiError = null;
+    let dataSource = "agmarknet";
+
+    // Try to fetch from real API
+    try {
+      const response = await fetch(url, { timeout: 8000 });
+
+      if (response.ok) {
+        apiResponse = await response.json();
+      } else {
+        apiError = `API returned status ${response.status}`;
+        console.warn(`[Mandi API] Real API failed with status ${response.status}`);
+      }
+    } catch (error) {
+      apiError = error?.message || "Network error";
+      console.warn(`[Mandi API] Real API fetch error:`, apiError);
     }
 
-    const data = await response.json();
-    const rawRecords = Array.isArray(data.records) ? data.records : [];
+    // Use real data if available, otherwise fallback to mock
+    const rawRecords = Array.isArray(apiResponse?.records)
+      ? apiResponse.records
+      : FALLBACK_MOCK_DATA;
+
+    if (!Array.isArray(apiResponse?.records)) {
+      dataSource = "mock";
+      console.log(
+        "[Mandi API] Using fallback mock data. Reason:",
+        apiError || "No API response"
+      );
+    }
+
     const mapped = rawRecords.map(mapRecord);
 
     const searchText = normalize(search);
@@ -163,7 +318,7 @@ router.get("/prices", async (req, res) => {
     const commodities = [...new Set(mapped.map((item) => item.commodity).filter(Boolean))].sort();
 
     const payload = {
-      source: "Agmarknet",
+      source: dataSource,
       totalInPage: filtered.length,
       limit: requestLimit,
       offset: requestOffset,
@@ -174,15 +329,32 @@ router.get("/prices", async (req, res) => {
       trend: buildTrend(filtered),
       fetchedAt: new Date().toISOString(),
       cache: { hit: false, ttlMs: CACHE_TTL_MS },
+      ...(apiError && { apiError }),
     };
 
     setCachedResponse(cacheKey, payload);
 
     return res.json(payload);
   } catch (error) {
-    return res.status(500).json({
-      message: "Unable to retrieve mandi prices",
-      details: error?.message || "Unknown error",
+    console.error("[Mandi API] Unexpected error:", error);
+    // Even on unexpected errors, return fallback data
+    const filtered = FALLBACK_MOCK_DATA;
+    const states = [...new Set(FALLBACK_MOCK_DATA.map((item) => item.state).filter(Boolean))].sort();
+    const commodities = [...new Set(FALLBACK_MOCK_DATA.map((item) => item.commodity).filter(Boolean))].sort();
+
+    return res.json({
+      source: "mock",
+      totalInPage: filtered.length,
+      limit: 100,
+      offset: 0,
+      filters: { state: "", commodity: "", search: "" },
+      states,
+      commodities,
+      records: filtered,
+      trend: FALLBACK_TREND,
+      fetchedAt: new Date().toISOString(),
+      cache: { hit: false, ttlMs: CACHE_TTL_MS },
+      apiError: error?.message || "Unknown error",
     });
   }
 });

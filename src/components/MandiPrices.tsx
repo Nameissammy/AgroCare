@@ -276,6 +276,7 @@ export default function MandiPrices() {
   const [stateFilter, setStateFilter] = useState('');
   const [commodityFilter, setCommodityFilter] = useState('');
   const [search, setSearch] = useState('');
+  const [dataSource, setDataSource] = useState<'agmarknet' | 'mock'>('agmarknet');
   const [records, setRecords] = useState<MandiRecord[]>([]);
   const [states, setStates] = useState<string[]>([]);
   const [commodities, setCommodities] = useState<string[]>([]);
@@ -315,6 +316,7 @@ export default function MandiPrices() {
         setStates(data.states || []);
         setCommodities(data.commodities || []);
         setTrend(data.trend || []);
+        setDataSource((data as ApiResponse & { source?: string }).source === 'mock' ? 'mock' : 'agmarknet');
       } catch (fetchError) {
         if ((fetchError as Error).name === 'AbortError') {
           return;
@@ -332,12 +334,12 @@ export default function MandiPrices() {
   }, [commodityFilter, stateFilter, t]);
 
   const displayedStates = useMemo(
-    () => states.map((stateItem) => ({ raw: stateItem, label: toLocalizedValue(stateItem, language, mandiStateTranslations, stateCanonicalIndex) })),
+    () => states.map((stateItem: string) => ({ raw: stateItem, label: toLocalizedValue(stateItem, language, mandiStateTranslations, stateCanonicalIndex) })),
     [language, states],
   );
 
   const displayedCommodities = useMemo(
-    () => commodities.map((commodityItem) => ({ raw: commodityItem, label: toLocalizedValue(commodityItem, language, mandiCommodityTranslations, commodityCanonicalIndex, commodityTermTranslations) })),
+    () => commodities.map((commodityItem: string) => ({ raw: commodityItem, label: toLocalizedValue(commodityItem, language, mandiCommodityTranslations, commodityCanonicalIndex, commodityTermTranslations) })),
     [commodities, language],
   );
 
@@ -350,7 +352,7 @@ export default function MandiPrices() {
     const englishQueryCommodity = toEnglishFromLocalized(search, language, mandiCommodityTranslations).trim().toLowerCase();
     const englishQueryState = toEnglishFromLocalized(search, language, mandiStateTranslations).trim().toLowerCase();
 
-    return records.filter((record) => {
+    return records.filter((record: MandiRecord) => {
       const localizedCommodity = toLocalizedValue(record.commodity, language, mandiCommodityTranslations, commodityCanonicalIndex, commodityTermTranslations).toLowerCase();
       const localizedState = toLocalizedValue(record.state, language, mandiStateTranslations, stateCanonicalIndex).toLowerCase();
       const market = record.market.toLowerCase();
@@ -371,11 +373,11 @@ export default function MandiPrices() {
 
   const chartData = useMemo(() => {
     return {
-      labels: trend.map((point) => formatTrendDate(point.date, language)),
+      labels: trend.map((point: TrendPoint) => formatTrendDate(point.date, language)),
       datasets: [
         {
           label: t('mandi.chart.modalPrice', 'Modal Price (₹/quintal)'),
-          data: trend.map((point) => point.modalPrice),
+          data: trend.map((point: TrendPoint) => point.modalPrice),
           borderColor: '#059669',
           backgroundColor: 'rgba(5, 150, 105, 0.15)',
           pointBackgroundColor: '#059669',
@@ -414,7 +416,12 @@ export default function MandiPrices() {
     <div className="flex-1 overflow-y-auto flex flex-col">
       <div className="p-8 space-y-6">
         <div>
-          <h3 className="text-3xl font-extrabold tracking-tight">{t('mandi.title', 'Live Mandi Price Tracker')}</h3>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h3 className="text-3xl font-extrabold tracking-tight">{t('mandi.title', 'Live Mandi Price Tracker')}</h3>
+            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${dataSource === 'mock' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-700'}`}>
+              {dataSource === 'mock' ? t('mandi.data.demo', 'Demo data') : t('mandi.data.live', 'Live data')}
+            </span>
+          </div>
           <p className="text-slate-500 mt-1">{t('mandi.subtitle', 'Daily commodity prices from Agmarknet with quick filtering')}</p>
         </div>
 
@@ -424,7 +431,7 @@ export default function MandiPrices() {
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
                 placeholder={t('mandi.searchPlaceholder', 'Search crop name')}
                 className="w-full rounded-lg border border-slate-200 pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
@@ -432,7 +439,7 @@ export default function MandiPrices() {
 
             <select
               value={stateFilter}
-              onChange={(e) => setStateFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setStateFilter(e.target.value)}
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="">{t('mandi.filter.allStates', 'All States')}</option>
@@ -445,7 +452,7 @@ export default function MandiPrices() {
 
             <select
               value={commodityFilter}
-              onChange={(e) => setCommodityFilter(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCommodityFilter(e.target.value)}
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
               <option value="">{t('mandi.filter.allCommodities', 'All Commodities')}</option>
